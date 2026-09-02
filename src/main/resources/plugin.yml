@@ -1,0 +1,7 @@
+name: EarthCore
+version: '${version}'
+main: de.mecrytv.earthcore.EarthCore
+api-version: '1.21'
+description: Core-System des EarthCraft-Netzwerks - Config, Datenbank, gemeinsame Services.
+authors:
+  - MecryTV
