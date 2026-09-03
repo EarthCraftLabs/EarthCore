@@ -99,20 +99,45 @@ Die Ordnernamen sind frei wählbar — du gibst sie beim Registrieren selbst an.
 ```kotlin
 package de.mecrytv.earthshop
 
+import de.mecrytv.earthcore.config.ConfigDefaults
+import de.mecrytv.earthcore.config.ConfigService
+import de.mecrytv.earthcore.config.JsonConfigService
+import de.mecrytv.earthcore.config.getOrDefault
 import de.mecrytv.earthcore.database.api.DatabaseProvider
 import de.mecrytv.earthcore.database.api.DatabaseService
 import de.mecrytv.earthcore.registry.api.AutoRegistrar
 import org.bukkit.plugin.java.JavaPlugin
+import java.io.File
+
+data class ShopConfig(
+    val database: String = "earthshop",
+    val startGuthaben: Long = 100,
+    val debug: Boolean = false,
+)
 
 class EarthShop : JavaPlugin() {
+
+    lateinit var configService: ConfigService
+        private set
+
+    lateinit var coreConfig: ConfigService
+        private set
 
     lateinit var database: DatabaseService
         private set
 
     override fun onEnable() {
-        val databases = server.servicesManager.load(DatabaseProvider::class.java)
+        configService = JsonConfigService(
+            file = File(dataFolder, "config.json"),
+            defaults = ConfigDefaults.model(ShopConfig()),
+            logger = logger,
+        )
+
+        coreConfig = server.servicesManager.load(ConfigService::class.java)
             ?: error("EarthCore ist nicht geladen")
-        database = databases.of("earthshop")
+
+        val databases = server.servicesManager.load(DatabaseProvider::class.java)!!
+        database = databases.of(configService.getOrDefault("database", "earthshop"))
 
         val registrar = server.servicesManager.load(AutoRegistrar::class.java)!!
         val summary = registrar.register(
@@ -128,16 +153,43 @@ class EarthShop : JavaPlugin() {
 }
 ```
 
-Zwei Schritte:
+Vier Schritte:
 
-1. **`databases.of("earthshop")`** gibt dir einen `DatabaseService` auf deine
-   **eigene** Datenbank. Eigener Verbindungspool, eigene Tabellen — nichts landet
-   in `earthcore` oder bei einem anderen Plugin. Existiert die Datenbank noch
-   nicht, legt EarthCore sie an. Host, Port, Benutzer und Passwort kommen aus
-   EarthCores `config.json`; pro Plugin unterscheidet sich nur der Name.
+1. **`JsonConfigService(...)`** legt deine eigene `plugins/EarthShop/config.json`
+   an. Die Feldwerte von `ShopConfig` sind gleichzeitig Schema und Standardwerte:
+   fehlende Schlüssel werden beim Start ergänzt, vom Nutzer gesetzte Werte bleiben
+   unangetastet. Neue Einstellungen fügst du nur in der Datenklasse hinzu.
 
-2. **`registrar.register(...)`** durchsucht die angegebenen Packages und meldet
+   > Nenn die Property **nicht** `config` — `JavaPlugin` hat schon ein
+   > `getConfig()` für die YAML-Konfiguration, und Kotlin meldet einen Konflikt.
+
+2. **`load(ConfigService::class.java)`** gibt dir EarthCores eigene Konfiguration,
+   falls du an gemeinsame Werte wie `settings.namespace` musst. Rein optional —
+   für plugin-eigene Einstellungen nimmst du Schritt 1.
+
+3. **`databases.of(...)`** gibt dir einen `DatabaseService` auf deine **eigene**
+   Datenbank. Eigener Verbindungspool, eigene Tabellen — nichts landet in
+   `earthcore` oder bei einem anderen Plugin. Existiert die Datenbank noch nicht,
+   legt EarthCore sie an. Host, Port, Benutzer und Passwort kommen aus EarthCores
+   `config.json`; pro Plugin unterscheidet sich nur der Name. Den holst du dir hier
+   aus der eigenen Config, damit ein Serverbetreiber ihn ändern kann, ohne dein
+   Plugin neu zu bauen.
+
+4. **`registrar.register(...)`** durchsucht die angegebenen Packages und meldet
    alles an, was eine passende Annotation trägt.
+
+Die Reihenfolge ist Absicht: die Konfiguration zuerst, weil der Datenbankname aus
+ihr kommt.
+
+Werte liest du danach überall über den `configService`:
+
+```kotlin
+val startGuthaben = configService.getLong("startGuthaben", 100)
+val debug = configService.getBoolean("debug")
+val alles = configService.asModel<ShopConfig>()
+```
+
+Mehr dazu unter [Konfiguration](#konfiguration).
 
 Ohne Package-Angabe wird das Package deiner Hauptklasse samt Unterpaketen
 durchsucht:

@@ -113,26 +113,59 @@ Die Ordnernamen sind frei wählbar — du gibst sie beim Registrieren selbst an.
 
 ## Hauptklasse
 
+Zuerst eine kleine Klasse, deren Feldwerte Schema **und** Standardwerte deiner
+`config.json` sind:
+
 ```java
 package de.mecrytv.earthjavashop;
 
+public class ShopConfig {
+
+    public String database = "earthjavashop";
+    public long startGuthaben = 100;
+    public boolean debug = false;
+}
+```
+
+Dann die Hauptklasse:
+
+```java
+package de.mecrytv.earthjavashop;
+
+import de.mecrytv.earthcore.config.ConfigDefaults;
+import de.mecrytv.earthcore.config.ConfigService;
+import de.mecrytv.earthcore.config.JsonConfigService;
+import de.mecrytv.earthcore.config.PatternPlaceholderResolver;
 import de.mecrytv.earthcore.database.api.DatabaseProvider;
 import de.mecrytv.earthcore.database.api.DatabaseService;
 import de.mecrytv.earthcore.registry.api.AutoRegistrar;
 import de.mecrytv.earthcore.registry.api.RegistrationSummary;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+
 public class EarthJavaShop extends JavaPlugin {
 
+    private ConfigService configService;
+    private ConfigService coreConfig;
     private DatabaseService database;
 
     @Override
     public void onEnable() {
-        DatabaseProvider databases = getServer().getServicesManager().load(DatabaseProvider.class);
-        if (databases == null) {
+        configService = new JsonConfigService(
+                new File(getDataFolder(), "config.json"),
+                ConfigDefaults.Companion.model(new ShopConfig()),
+                JsonConfigService.Companion.defaultGson(true),
+                new PatternPlaceholderResolver("%", "%"),
+                getLogger());
+
+        coreConfig = getServer().getServicesManager().load(ConfigService.class);
+        if (coreConfig == null) {
             throw new IllegalStateException("EarthCore ist nicht geladen");
         }
-        database = databases.of("earthjavashop");
+
+        DatabaseProvider databases = getServer().getServicesManager().load(DatabaseProvider.class);
+        database = databases.of(configService.getOrDefault("database", String.class, "earthjavashop"));
 
         AutoRegistrar registrar = getServer().getServicesManager().load(AutoRegistrar.class);
         RegistrationSummary summary = registrar.register(
@@ -145,22 +178,57 @@ public class EarthJavaShop extends JavaPlugin {
         getLogger().info("Gestartet: " + summary);
     }
 
+    public ConfigService getConfigService() {
+        return configService;
+    }
+
     public DatabaseService getDatabase() {
         return database;
     }
 }
 ```
 
-Zwei Schritte:
+Vier Schritte:
 
-1. **`databases.of("earthjavashop")`** gibt dir einen `DatabaseService` auf deine
-   **eigene** Datenbank. Eigener Verbindungspool, eigene Tabellen — nichts landet
-   in `earthcore` oder bei einem anderen Plugin. Existiert die Datenbank noch
-   nicht, legt EarthCore sie an. Host, Port, Benutzer und Passwort kommen aus
-   EarthCores `config.json`; pro Plugin unterscheidet sich nur der Name.
+1. **`new JsonConfigService(...)`** legt deine eigene
+   `plugins/EarthJavaShop/config.json` an. Fehlende Schlüssel werden beim Start
+   aus `ShopConfig` ergänzt, vom Nutzer gesetzte Werte bleiben unangetastet. Neue
+   Einstellungen fügst du nur in der Klasse hinzu.
 
-2. **`registrar.register(...)`** durchsucht die angegebenen Packages und meldet
+   > Die fünf Argumente sind Pflicht: die Kotlin-Seite hat für `gson`,
+   > `placeholderResolver` und `logger` Standardwerte, und die gibt es aus Java
+   > nicht. `defaultGson(true)` heißt eingerückte, gut lesbare JSON-Datei.
+   >
+   > Nenn den Getter `getConfigService()`, **nicht** `getConfig()` — den hat
+   > `JavaPlugin` schon für die YAML-Konfiguration.
+
+2. **`load(ConfigService.class)`** gibt dir EarthCores eigene Konfiguration, falls
+   du an gemeinsame Werte wie `settings.namespace` musst. Rein optional — für
+   plugin-eigene Einstellungen nimmst du Schritt 1.
+
+3. **`databases.of(...)`** gibt dir einen `DatabaseService` auf deine **eigene**
+   Datenbank. Eigener Verbindungspool, eigene Tabellen — nichts landet in
+   `earthcore` oder bei einem anderen Plugin. Existiert die Datenbank noch nicht,
+   legt EarthCore sie an. Host, Port, Benutzer und Passwort kommen aus EarthCores
+   `config.json`; pro Plugin unterscheidet sich nur der Name. Den holst du dir hier
+   aus der eigenen Config, damit ein Serverbetreiber ihn ändern kann, ohne dein
+   Plugin neu zu bauen.
+
+4. **`registrar.register(...)`** durchsucht die angegebenen Packages und meldet
    alles an, was eine passende Annotation trägt.
+
+Die Reihenfolge ist Absicht: die Konfiguration zuerst, weil der Datenbankname aus
+ihr kommt.
+
+Werte liest du danach überall über den `configService`:
+
+```java
+long startGuthaben = configService.getLong("startGuthaben", 100);
+boolean debug = configService.getBoolean("debug", false);
+ShopConfig alles = configService.asModel(ShopConfig.class);
+```
+
+Mehr dazu unter [Konfiguration](#konfiguration).
 
 Ohne Package-Angabe wird das Package deiner Hauptklasse samt Unterpaketen
 durchsucht:
