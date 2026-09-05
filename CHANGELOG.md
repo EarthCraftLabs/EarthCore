@@ -10,6 +10,19 @@ sie sich beim Bauen von dort.
 
 ---
 
+## [1.13.0]
+
+### Neu
+
+- **Mitgelieferte `config.json`** im Resource-Ordner. Sie ist ab jetzt die Quelle
+  der Standardwerte und wird beim ersten Start nach `plugins/EarthCore/` kopiert.
+  Alle Abschnitte stehen darin sichtbar beieinander: Einstellungen, Datenbank und
+  Logging samt zwei Beispiel-Webhooks.
+- Passwort und Webhook-URLs sind in der Vorlage **leer**. Ein Webhook ohne URL ist
+  wirkungslos, der erste Start verschickt also nichts. Drei Tests brechen den Build
+  ab, sobald dort echte Zugangsdaten stehen, und ein vierter meldet sich, wenn
+  Vorlage und Datenklassen auseinanderlaufen.
+
 ## [1.12.0]
 
 ### Neu
@@ -150,6 +163,7 @@ Entwicklung und existieren nicht als Commit.
   greifen auf Kotlin-Properties *und* Java-Feldern, zu jeder `suspend`-Methode
   gibt es eine `CompletableFuture`-Variante.
 
+[1.13.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.13.0
 [1.12.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.12.0
 [1.11.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.11.0
 [1.10.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.10.0

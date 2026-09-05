@@ -3,7 +3,6 @@ package de.mecrytv.earthcore
 import de.mecrytv.earthcore.config.ConfigDefaults
 import de.mecrytv.earthcore.config.ConfigService
 import de.mecrytv.earthcore.config.JsonConfigService
-import de.mecrytv.earthcore.config.PluginConfig
 import de.mecrytv.earthcore.config.getOrDefault
 import de.mecrytv.earthcore.cooldown.api.CooldownRegistry
 import de.mecrytv.earthcore.cooldown.internal.CooldownRecord
@@ -74,7 +73,7 @@ class EarthCore : JavaPlugin() {
 
         configService = JsonConfigService(
             file = File(dataFolder, "config.json"),
-            defaults = ConfigDefaults.model(PluginConfig()),
+            defaults = ConfigDefaults.resource("config.json"),
             logger = logger,
         )
 

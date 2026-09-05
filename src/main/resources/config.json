@@ -1,0 +1,35 @@
+{
+  "settings": {
+    "namespace": "earthcraft",
+    "debug": false
+  },
+  "database": {
+    "host": "127.0.0.1",
+    "port": 3306,
+    "database": "earthcore",
+    "user": "earthcore",
+    "password": "",
+    "poolSize": 10,
+    "connectionTimeoutMs": 5000
+  },
+  "logging": {
+    "debug": false,
+    "retentionDays": 30,
+    "discord": [
+      {
+        "url": "",
+        "minLevel": "WARN",
+        "categories": [],
+        "username": "EarthCraft"
+      },
+      {
+        "url": "",
+        "minLevel": "INFO",
+        "categories": [
+          "moderation"
+        ],
+        "username": "EarthCraft"
+      }
+    ]
+  }
+}

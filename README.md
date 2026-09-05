@@ -184,7 +184,7 @@ wo der Server ohnehin noch keine Spieler annimmt.
 Ergebnis: **`build/libs/EarthCore.jar`** (~8 MB) — das Shadow-Jar mit Kotlin,
 Coroutines, HikariCP und dem MariaDB-Treiber.
 
-> Daneben liegt `EarthCore-1.12.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
+> Daneben liegt `EarthCore-1.13.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
 > ist das Jar **ohne** Abhängigkeiten und gehört nicht auf den Server.
 
 ---
@@ -193,8 +193,9 @@ Coroutines, HikariCP und dem MariaDB-Treiber.
 
 **1.** `build/libs/EarthCore.jar` nach `<server>/plugins/` kopieren.
 
-**2.** Server einmal starten. EarthCore legt `plugins/EarthCore/config.json` an
-und fährt sich sofort wieder herunter, weil noch keine Datenbank erreichbar ist.
+**2.** Server einmal starten. EarthCore kopiert seine mitgelieferte Vorlage nach
+`plugins/EarthCore/config.json` und `plugins/EarthCore/messages.json` und fährt
+sich sofort wieder herunter, weil noch keine Datenbank erreichbar ist.
 
 **3.** Zugangsdaten eintragen:
 
@@ -206,12 +207,28 @@ und fährt sich sofort wieder herunter, weil noch keine Datenbank erreichbar ist
     "port": 3306,
     "database": "earthcore",
     "user": "earthcore",
-    "password": "geheim",
+    "password": "hier-eintragen",
     "poolSize": 10,
     "connectionTimeoutMs": 5000
+  },
+  "logging": {
+    "debug": false,
+    "retentionDays": 30,
+    "discord": [
+      { "url": "https://discord.com/api/webhooks/...", "minLevel": "WARN", "categories": [], "username": "EarthCraft" },
+      { "url": "https://discord.com/api/webhooks/...", "minLevel": "INFO", "categories": ["moderation"], "username": "EarthCraft" }
+    ]
   }
 }
 ```
+
+> Die Vorlage im Jar (`src/main/resources/config.json`) enthält bewusst ein leeres
+> Passwort und leere Webhook-URLs — ein Webhook ohne URL ist wirkungslos. Ein Test
+> im Build bricht ab, sobald dort echte Zugangsdaten stehen, damit nichts
+> versehentlich im Repository landet.
+>
+> Die Datei in `plugins/EarthCore/` enthält nach dem Eintragen deine echten
+> Zugangsdaten und gehört **nicht** in ein Repository.
 
 **4.** Datenbankbenutzer anlegen:
 
@@ -243,7 +260,7 @@ Plugins laufen dann gar nicht erst an, statt reihenweise Folgefehler zu werfen.
 ./gradlew publishToMavenLocal
 ```
 
-Legt `de.mecrytv:earthcore:1.12.0` in `~/.m2/repository` ab. Veröffentlicht wird
+Legt `de.mecrytv:earthcore:1.13.0` in `~/.m2/repository` ab. Veröffentlicht wird
 das **Shadow-Jar** — das andere Projekt bekommt mit einer einzigen Abhängigkeit
 auch Kotlin, Coroutines und HikariCP auf den Compile-Classpath.
 
