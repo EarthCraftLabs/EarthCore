@@ -10,6 +10,18 @@ sie sich beim Bauen von dort.
 
 ---
 
+## [1.14.0]
+
+### Neu
+
+- **`GuiView` und `GuiItem` nehmen den `ItemBuilder` direkt entgegen.** Bisher
+  musste an jedem Aufruf ein `.build()` haengen; `Buttons` hat den Builder zwar
+  intern genutzt, nach aussen gab es aber nur `ItemStack`. Die `ItemStack`-
+  Varianten bleiben unveraendert bestehen.
+- **Dritter Beispiel-Webhook mit `minLevel: "ERROR"`** in der mitgelieferten
+  `config.json`, damit die drei sinnvollen Stufen sichtbar sind: nur Fehler,
+  Warnungen und Fehler, sowie Team-Aktionen ueber die Kategorie.
+
 ## [1.13.0]
 
 ### Neu
@@ -163,6 +175,7 @@ Entwicklung und existieren nicht als Commit.
   greifen auf Kotlin-Properties *und* Java-Feldern, zu jeder `suspend`-Methode
   gibt es eine `CompletableFuture`-Variante.
 
+[1.14.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.14.0
 [1.13.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.13.0
 [1.12.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.12.0
 [1.11.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.11.0

@@ -6,6 +6,7 @@ import de.mecrytv.earthcore.gui.api.GuiItem
 import de.mecrytv.earthcore.gui.api.GuiMask
 import de.mecrytv.earthcore.gui.api.GuiView
 import de.mecrytv.earthcore.gui.api.Page
+import de.mecrytv.earthcore.item.api.ItemBuilder
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import java.util.function.Consumer
@@ -32,10 +33,15 @@ internal class RenderContext(
 
     override fun item(slot: Int, stack: ItemStack): GuiView = item(slot, GuiItem(stack))
 
+    override fun item(slot: Int, builder: ItemBuilder): GuiView = item(slot, GuiItem(builder))
+
     override fun item(slot: Int, item: GuiItem): GuiView = apply { buffer[slot] = item }
 
     override fun button(slot: Int, stack: ItemStack, action: Consumer<GuiClick>): GuiView =
         item(slot, GuiItem(stack, action))
+
+    override fun button(slot: Int, builder: ItemBuilder, action: Consumer<GuiClick>): GuiView =
+        item(slot, GuiItem(builder, action))
 
     override fun fill(stack: ItemStack): GuiView = apply {
         for (slot in 0 until size) if (buffer[slot] == null) buffer[slot] = GuiItem(stack)
@@ -51,6 +57,10 @@ internal class RenderContext(
             }
         }
     }
+
+    override fun fill(builder: ItemBuilder): GuiView = fill(builder.build())
+
+    override fun border(builder: ItemBuilder): GuiView = border(builder.build())
 
     override fun clear(slot: Int): GuiView = apply { buffer[slot] = null }
 
@@ -71,6 +81,11 @@ internal class RenderContext(
 
     override fun bind(symbol: Char, stack: ItemStack, action: Consumer<GuiClick>): GuiView =
         bind(symbol, GuiItem(stack, action))
+
+    override fun bind(symbol: Char, builder: ItemBuilder): GuiView = bind(symbol, GuiItem(builder))
+
+    override fun bind(symbol: Char, builder: ItemBuilder, action: Consumer<GuiClick>): GuiView =
+        bind(symbol, GuiItem(builder, action))
 
     override fun slots(symbol: Char): List<Int> {
         val aktuell = mask ?: error("Erst mask(...) aufrufen, dann bind/slots benutzen")

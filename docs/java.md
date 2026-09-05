@@ -48,7 +48,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("de.mecrytv:earthcore:1.13.0")
+    compileOnly("de.mecrytv:earthcore:1.14.0")
 }
 
 java {
@@ -76,7 +76,7 @@ java {
   <dependency>
     <groupId>de.mecrytv</groupId>
     <artifactId>earthcore</artifactId>
-    <version>1.13.0</version>
+    <version>1.14.0</version>
     <scope>provided</scope>
   </dependency>
 </dependencies>
@@ -794,7 +794,7 @@ public class ShopGui extends Gui {
         view.bind('#', Buttons.filler());
 
         view.paginate('.', artikel, eintrag -> GuiItem.of(
-                ItemBuilder.of(Material.EMERALD).name("<green>" + eintrag.name()).build(),
+                ItemBuilder.of(Material.EMERALD).name("<green>" + eintrag.name()),
                 klick -> klick.getViewer().sendMessage("Gekauft: " + eintrag.name())));
 
         view.item(view.slots('P').get(0), Buttons.previousPage(view));
@@ -809,6 +809,22 @@ public class ShopGui extends Gui {
 GuiProvider guis = getServer().getServicesManager().load(GuiProvider.class);
 guis.open(spieler, new ShopGui(artikel));
 ```
+
+### Zusammenspiel mit dem ItemBuilder
+
+Jede Zeichenmethode nimmt den `ItemBuilder` direkt entgegen, ein `.build()` am Ende
+brauchst du nicht:
+
+```java
+view.item(11, ItemBuilder.of(Material.DIAMOND).name("<aqua>Diamant"));
+view.button(15, ItemBuilder.of(Material.EMERALD).name("<green>Kaufen"), klick -> { });
+view.bind('#', ItemBuilder.of(Material.GRAY_STAINED_GLASS_PANE).name(" "));
+view.fill(ItemBuilder.of(Material.BLACK_STAINED_GLASS_PANE).name(" "));
+```
+
+Gebaut wird bei jedem Zeichnen neu, jeder Slot bekommt also seinen eigenen
+`ItemStack`. Die `ItemStack`-Varianten gibt es weiterhin, wenn du ein Item schon
+fertig hast.
 
 ### Masken statt Slot-Nummern
 

@@ -1,5 +1,6 @@
 package de.mecrytv.earthcore.gui.api
 
+import de.mecrytv.earthcore.item.api.ItemBuilder
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import java.util.function.Consumer
@@ -20,13 +21,21 @@ interface GuiView {
 
     fun item(slot: Int, stack: ItemStack): GuiView
 
+    fun item(slot: Int, builder: ItemBuilder): GuiView
+
     fun item(slot: Int, item: GuiItem): GuiView
 
     fun button(slot: Int, stack: ItemStack, action: Consumer<GuiClick>): GuiView
 
+    fun button(slot: Int, builder: ItemBuilder, action: Consumer<GuiClick>): GuiView
+
     fun fill(stack: ItemStack): GuiView
 
+    fun fill(builder: ItemBuilder): GuiView
+
     fun border(stack: ItemStack): GuiView
+
+    fun border(builder: ItemBuilder): GuiView
 
     fun clear(slot: Int): GuiView
 
@@ -36,9 +45,13 @@ interface GuiView {
 
     fun bind(symbol: Char, stack: ItemStack): GuiView
 
+    fun bind(symbol: Char, builder: ItemBuilder): GuiView
+
     fun bind(symbol: Char, item: GuiItem): GuiView
 
     fun bind(symbol: Char, stack: ItemStack, action: Consumer<GuiClick>): GuiView
+
+    fun bind(symbol: Char, builder: ItemBuilder, action: Consumer<GuiClick>): GuiView
 
     fun slots(symbol: Char): List<Int>
 

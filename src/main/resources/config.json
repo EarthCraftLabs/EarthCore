@@ -18,6 +18,12 @@
     "discord": [
       {
         "url": "",
+        "minLevel": "ERROR",
+        "categories": [],
+        "username": "EarthCraft Fehler"
+      },
+      {
+        "url": "",
         "minLevel": "WARN",
         "categories": [],
         "username": "EarthCraft"
@@ -28,7 +34,7 @@
         "categories": [
           "moderation"
         ],
-        "username": "EarthCraft"
+        "username": "EarthCraft Team"
       }
     ]
   }

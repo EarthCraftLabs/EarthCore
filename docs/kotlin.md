@@ -57,7 +57,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("de.mecrytv:earthcore:1.13.0")
+    compileOnly("de.mecrytv:earthcore:1.14.0")
 }
 
 kotlin {
@@ -676,7 +676,7 @@ class ShopGui(private val artikel: List<Artikel>) :
 
         val sichtbar = if (nurGuenstig) artikel.filter { it.preis < 100 } else artikel
         view.paginate('.', sichtbar) { eintrag ->
-            GuiItem(ItemBuilder.of(Material.EMERALD).name("<green>${eintrag.name}").build()) { klick ->
+            GuiItem(ItemBuilder.of(Material.EMERALD).name("<green>${eintrag.name}")) { klick ->
                 klick.viewer.sendMessage("Gekauft: ${eintrag.name}")
             }
         }
@@ -693,6 +693,22 @@ class ShopGui(private val artikel: List<Artikel>) :
 val guis = server.servicesManager.load(GuiProvider::class.java)!!
 guis.open(spieler, ShopGui(artikel))
 ```
+
+### Zusammenspiel mit dem ItemBuilder
+
+Jede Zeichenmethode nimmt den `ItemBuilder` direkt entgegen, ein `.build()` am Ende
+brauchst du nicht:
+
+```kotlin
+view.item(11, ItemBuilder.of(Material.DIAMOND).name("<aqua>Diamant"))
+view.button(15, ItemBuilder.of(Material.EMERALD).name("<green>Kaufen")) { klick -> ... }
+view.bind('#', ItemBuilder.of(Material.GRAY_STAINED_GLASS_PANE).name(" "))
+view.fill(ItemBuilder.of(Material.BLACK_STAINED_GLASS_PANE).name(" "))
+```
+
+Gebaut wird bei jedem Zeichnen neu, jeder Slot bekommt also seinen eigenen
+`ItemStack`. Die `ItemStack`-Varianten gibt es weiterhin, wenn du ein Item schon
+fertig hast.
 
 ### Masken statt Slot-Nummern
 

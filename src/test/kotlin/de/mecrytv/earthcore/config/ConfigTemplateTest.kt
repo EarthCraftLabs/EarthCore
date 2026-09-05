@@ -85,7 +85,7 @@ class ConfigTemplateTest {
         assertEquals("earthcraft", gelesen.settings.namespace)
         assertEquals(3306, gelesen.database.port)
         assertEquals(30, gelesen.logging.retentionDays)
-        assertEquals(2, gelesen.logging.discord.size)
+        assertEquals(3, gelesen.logging.discord.size)
     }
 
     @Test
