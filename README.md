@@ -22,8 +22,9 @@ Commands.
 | `DatabaseProvider` | Gibt jedem Plugin **seine eigene** MariaDB-Datenbank und legt sie bei Bedarf an. |
 | `DatabaseService` | CRUD auf annotierten Models — HikariCP als Pool, Gson für komplexe Felder. Nie auf dem Tick-Thread. |
 | `AutoRegistrar` | Durchsucht die Packages deines Plugins und registriert alles mit passender Annotation. |
+| `CooldownRegistry` | Cooldowns pro Spieler, in der Datenbank abgelegt und damit neustartfest. Abfragen bleiben synchron. |
 
-Alle vier liegen in Bukkits `ServicesManager`. Dein Plugin braucht die
+Alle liegen in Bukkits `ServicesManager`. Dein Plugin braucht die
 `EarthCore`-Klasse nie zu kennen — ein `load(DatabaseProvider.class)` reicht.
 
 ### Eine Datenbank pro Plugin
@@ -71,9 +72,26 @@ registrar.register(this, database, "de.mecrytv.earthshop")
 | `@JsonColumn` | Erzwingt Gson-Serialisierung |
 | `@AutoListener(name, description, requires)` | Bukkit-`Listener` |
 | `@AutoCommand(name, description, aliases, permission, requires)` | Paper-`BasicCommand` |
+| `@Cooldown(seconds, minutes, hours, key, bypassPermission, messageKey)` | Cooldown auf einem Command |
 
 Commands laufen über Papers Brigadier-Lifecycle — kein `commands:`-Block in der
 `plugin.yml` nötig.
+
+### Cooldowns
+
+```kotlin
+@AutoCommand(name = "kit")
+@Cooldown(hours = 24, bypassPermission = "earthshop.kit.bypass")
+object KitCommand : BasicCommand { … }
+```
+
+Cooldowns liegen in der Datenbank und überleben einen Neustart. Gelesen wird aus
+einem Cache, den EarthCore beim Start füllt — Abfragen sind daher synchron und
+bremsen den Tick-Thread nicht. Ohne Annotation geht es genauso über die API:
+`cooldowns.start(uuid, "teleport", Duration.ofSeconds(30))`.
+
+Die Meldung bei aktivem Cooldown steht in `plugins/EarthCore/messages.json` und
+wird mit MiniMessage formatiert.
 
 ### Threading
 
@@ -102,7 +120,7 @@ wo der Server ohnehin noch keine Spieler annimmt.
 Ergebnis: **`build/libs/EarthCore.jar`** (~8 MB) — das Shadow-Jar mit Kotlin,
 Coroutines, HikariCP und dem MariaDB-Treiber.
 
-> Daneben liegt `EarthCore-1.6.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
+> Daneben liegt `EarthCore-1.7.1.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
 > ist das Jar **ohne** Abhängigkeiten und gehört nicht auf den Server.
 
 ---
@@ -161,7 +179,7 @@ Plugins laufen dann gar nicht erst an, statt reihenweise Folgefehler zu werfen.
 ./gradlew publishToMavenLocal
 ```
 
-Legt `de.mecrytv:earthcore:1.6.0` in `~/.m2/repository` ab. Veröffentlicht wird
+Legt `de.mecrytv:earthcore:1.7.1` in `~/.m2/repository` ab. Veröffentlicht wird
 das **Shadow-Jar** — das andere Projekt bekommt mit einer einzigen Abhängigkeit
 auch Kotlin, Coroutines und HikariCP auf den Compile-Classpath.
 
@@ -183,10 +201,13 @@ de.mecrytv.earthcore
 │   ├── annotations/          @Table @PrimaryKey @Column @JsonColumn
 │   ├── api/                  DatabaseService, DatabaseProvider, DatabaseCredentials
 │   └── internal/             HikariCP-Pools, Reflection auf Models, SQL-Erzeugung
-└── registry/
-    ├── annotations/          @AutoListener @AutoCommand
-    ├── api/                  AutoRegistrar, RegistrationSummary, RegisteredEntry
-    └── internal/             Classpath-Scan, Instanziierung, Permission-Wrapper
+├── registry/
+│   ├── annotations/          @AutoListener @AutoCommand @Cooldown
+│   ├── api/                  AutoRegistrar, RegistrationSummary, RegisteredEntry
+│   └── internal/             Classpath-Scan, Instanziierung, Permission- und Cooldown-Wrapper
+└── cooldown/
+    ├── api/                  CooldownRegistry
+    └── internal/             Speicher-Cache mit Datenbank dahinter, Zeitformatierung
 ```
 
 Interfaces liegen in `api/`, Implementierungen in `internal/`. Nur `api/` und

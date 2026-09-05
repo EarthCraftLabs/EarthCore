@@ -16,12 +16,17 @@ fun interface ConfigDefaults {
 
         fun resource(
             path: String = "config.json",
-            classLoader: ClassLoader = ConfigDefaults::class.java.classLoader,
-        ): ConfigDefaults = ConfigDefaults {
-            val stream = classLoader.getResourceAsStream(path)
-                ?: error("Ressource '$path' fehlt im resources-Ordner des Plugins")
-            val parsed = stream.reader(Charsets.UTF_8).use { JsonParser.parseReader(it) }
-            parsed as? JsonObject ?: error("Ressource '$path' enthaelt kein JSON-Objekt")
+            classLoader: ClassLoader? = null,
+        ): ConfigDefaults {
+            val loader = classLoader
+                ?: CallerLookup.outside(ConfigDefaults::class.java)?.classLoader
+                ?: ConfigDefaults::class.java.classLoader
+            return ConfigDefaults {
+                val stream = loader.getResourceAsStream(path)
+                    ?: error("Ressource '$path' fehlt im resources-Ordner des Plugins")
+                val parsed = stream.reader(Charsets.UTF_8).use { JsonParser.parseReader(it) }
+                parsed as? JsonObject ?: error("Ressource '$path' enthaelt kein JSON-Objekt")
+            }
         }
 
         fun values(vararg entries: Pair<String, Any?>): ConfigDefaults = ConfigDefaults { gson ->

@@ -1,9 +1,12 @@
 package de.mecrytv.earthcore.registry.internal
 
+import de.mecrytv.earthcore.config.ConfigService
+import de.mecrytv.earthcore.cooldown.api.CooldownRegistry
 import de.mecrytv.earthcore.database.annotations.Table
 import de.mecrytv.earthcore.database.api.DatabaseService
 import de.mecrytv.earthcore.registry.annotations.AutoCommand
 import de.mecrytv.earthcore.registry.annotations.AutoListener
+import de.mecrytv.earthcore.registry.annotations.Cooldown
 import de.mecrytv.earthcore.registry.api.AutoRegistrar
 import de.mecrytv.earthcore.registry.api.RegisteredEntry
 import de.mecrytv.earthcore.registry.api.RegistrationSummary
@@ -14,7 +17,10 @@ import org.bukkit.event.Listener
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 
-class ReflectionAutoRegistrar : AutoRegistrar {
+class ReflectionAutoRegistrar(
+    private val cooldowns: CooldownRegistry,
+    private val messages: ConfigService,
+) : AutoRegistrar {
 
     override fun register(plugin: JavaPlugin, database: DatabaseService, vararg packages: String) =
         scanAndRegister(plugin, database, packages.toList())
@@ -68,7 +74,14 @@ class ReflectionAutoRegistrar : AutoRegistrar {
                     }
                     val command = Instantiator.create(type, plugin) as? BasicCommand
                         ?: error("@AutoCommand verlangt io.papermc.paper.command.brigadier.BasicCommand")
-                    commands += meta to PermissionGate.wrap(command, meta.permission)
+                    val gated = CooldownGate.wrap(
+                        PermissionGate.wrap(command, meta.permission),
+                        type.getAnnotation(Cooldown::class.java),
+                        meta.name,
+                        cooldowns,
+                        messages,
+                    )
+                    commands += meta to gated
                     entries += RegisteredEntry(
                         RegisteredEntry.Kind.COMMAND,
                         meta.name,

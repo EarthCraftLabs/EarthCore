@@ -16,6 +16,7 @@ steht im [Haupt-README](../README.md).
 - [Datenbankzugriff](#datenbankzugriff)
 - [Listener](#listener)
 - [Commands](#commands)
+- [Cooldowns](#cooldowns)
 - [Konfiguration](#konfiguration)
 - [Annotationen](#annotationen)
 - [API-Referenz](#api-referenz)
@@ -43,7 +44,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("de.mecrytv:earthcore:1.6.0")
+    compileOnly("de.mecrytv:earthcore:1.7.1")
 }
 
 java {
@@ -71,7 +72,7 @@ java {
   <dependency>
     <groupId>de.mecrytv</groupId>
     <artifactId>earthcore</artifactId>
-    <version>1.6.0</version>
+    <version>1.7.1</version>
     <scope>provided</scope>
   </dependency>
 </dependencies>
@@ -554,6 +555,106 @@ aufweicht. Nimm eins von beidem, nicht beides.
 
 ---
 
+## Cooldowns
+
+Cooldowns liegen in EarthCores Datenbank und **überleben einen Serverneustart**.
+Gelesen wird trotzdem aus dem Speicher: EarthCore lädt beim Start alle noch
+laufenden Cooldowns in einen Cache und schreibt Änderungen im Hintergrund zurück.
+Deshalb sind alle Abfragen synchron — kein `CompletableFuture`, kein Blockieren
+des Tick-Threads.
+
+### Per Annotation am Command
+
+```java
+@AutoCommand(name = "kit", description = "Holt dein Kit", permission = "earthjavashop.kit")
+@Cooldown(hours = 24, bypassPermission = "earthjavashop.kit.bypass")
+public class KitCommand implements BasicCommand {
+
+    @Override
+    public void execute(@NotNull CommandSourceStack source, @NotNull String[] args) {
+        source.getSender().sendMessage("Kit ausgegeben.");
+    }
+}
+```
+
+Läuft noch ein Cooldown, wird `execute` gar nicht erst aufgerufen und der Spieler
+bekommt die Meldung aus der `messages.json`. Gestartet wird der Cooldown **nach**
+einem erfolgreichen Durchlauf — wirft dein Command, bleibt der Spieler frei.
+
+| Feld | Default | Wirkung |
+|---|---|---|
+| `seconds` / `minutes` / `hours` | `0` | Werden addiert. Mindestens eines muss gesetzt sein. |
+| `key` | Command-Name | Mehrere Commands mit demselben `key` teilen sich einen Cooldown |
+| `bypassPermission` | `""` | Wer sie hat, wird nie gebremst |
+| `messageKey` | `"cooldown.active"` | Pfad in der `messages.json` |
+
+```java
+@AutoCommand(name = "warp")
+@Cooldown(minutes = 1, seconds = 30, key = "teleport")
+public class WarpCommand implements BasicCommand { }
+```
+
+Die Konsole hat nie einen Cooldown — nur Spieler werden gebremst.
+
+### Direkt über die API
+
+```java
+import de.mecrytv.earthcore.cooldown.api.CooldownRegistry;
+import java.time.Duration;
+
+CooldownRegistry cooldowns = getServer().getServicesManager().load(CooldownRegistry.class);
+UUID uuid = player.getUniqueId();
+
+cooldowns.start(uuid, "teleport", Duration.ofSeconds(30));
+cooldowns.extend(uuid, "teleport", Duration.ofSeconds(10));
+
+if (cooldowns.isActive(uuid, "teleport")) {
+    player.sendMessage("Noch " + cooldowns.remaining(uuid, "teleport").getSeconds() + "s");
+    return;
+}
+
+cooldowns.clear(uuid, "teleport");
+cooldowns.clearAll(uuid);
+Set<String> laufende = cooldowns.keys(uuid);
+```
+
+`start` überschreibt einen laufenden Cooldown, `extend` rechnet auf die Restzeit
+auf. Ist der Cooldown bereits abgelaufen, startet `extend` von jetzt an neu.
+`remaining` liefert `Duration.ZERO`, wenn keiner läuft.
+
+### Die Meldung anpassen
+
+Die Texte stehen in `plugins/EarthCore/messages.json`:
+
+```json
+{
+  "prefix": "<gray>[<gold>EarthCraft<gray>]</gray> ",
+  "cooldown": {
+    "active": "%prefix%<red>Bitte warte noch <yellow>%remaining%</yellow>."
+  }
+}
+```
+
+`%remaining%` wird als `1h 30m 15s` eingesetzt, Nullwerte fallen weg, angebrochene
+Sekunden werden aufgerundet. Formatiert wird mit MiniMessage.
+
+Eigene Texte legst du daneben und verweist per `messageKey` darauf:
+
+```json
+{
+  "kit": { "active": "%prefix%<red>Dein Kit gibt es erst in <yellow>%remaining%</yellow> wieder." }
+}
+```
+
+```java
+@Cooldown(hours = 24, messageKey = "kit.active")
+```
+
+Fehlende Schlüssel werden beim Start aus dem Jar ergänzt, deine Änderungen bleiben
+stehen.
+
+---
+
 ## Konfiguration
 
 EarthCores Konfiguration liegt im `ServicesManager` und ist über Punkt-Pfade
@@ -605,6 +706,16 @@ JsonConfigService shopConfig = new JsonConfigService(
         getLogger());
 ```
 
+Statt `ConfigDefaults.Companion.model(...)` kannst du eine fertige Datei aus
+deinem `resources`-Ordner als Vorlage nehmen:
+
+```java
+ConfigDefaults.Companion.resource("config.json", null)
+```
+
+Gesucht wird im Jar **deines** Plugins, nicht in EarthCores. Brauchst du einen
+anderen ClassLoader, gibst du ihn statt `null` mit.
+
 Fehlende Schlüssel werden beim Start aus den Defaults ergänzt, vorhandene Werte
 bleiben unangetastet. Eine kaputte Datei wird weggesichert statt überschrieben.
 
@@ -620,6 +731,7 @@ bleiben unangetastet. Eine kaputte Datei wird weggesichert statt überschrieben.
 | `@JsonColumn` | `@JsonColumn` |
 | `@AutoListener` | `@AutoListener(name = "Join", description = "…", requires = {"Vault"})` |
 | `@AutoCommand` | `@AutoCommand(name = "balance", description = "…", aliases = {"bal"}, permission = "…")` |
+| `@Cooldown` | `@Cooldown(hours = 24, bypassPermission = "…", messageKey = "kit.active")` |
 
 `@Table`, `@PrimaryKey`, `@Column` und `@JsonColumn` liegen in
 `de.mecrytv.earthcore.database.annotations`, `@AutoListener` und `@AutoCommand` in
@@ -662,6 +774,21 @@ geprüft, bevor eine Verbindung aufgebaut wird.
 RegistrationSummary register(JavaPlugin plugin, DatabaseService database, String... packages);
 RegistrationSummary register(JavaPlugin plugin, String... packages);
 ```
+
+### `CooldownRegistry`
+
+```java
+void start(UUID subject, String key, Duration duration);
+void extend(UUID subject, String key, Duration by);
+boolean clear(UUID subject, String key);
+int clearAll(UUID subject);
+boolean isActive(UUID subject, String key);
+Duration remaining(UUID subject, String key);
+Set<String> keys(UUID subject);
+```
+
+Alle Methoden sind synchron — hier gibt es bewusst keine `…Async`-Varianten.
+Persistiert wird im Hintergrund in EarthCores Datenbank, Tabelle `cooldowns`.
 
 ### `RegistrationSummary`
 
@@ -727,6 +854,10 @@ die Tabelle scheitert mit *Unknown column*. Bis auf Weiteres manuell:
 ```sql
 ALTER TABLE shop_profiles ADD COLUMN notiz VARCHAR(255);
 ```
+
+**Cooldown-Dauer von 0.** `@Cooldown` ohne `seconds`/`minutes`/`hours` und
+`start(..., Duration.ZERO)` werfen beide eine `IllegalArgumentException`. Beim
+Command fliegt sie schon beim Registrieren, nicht erst beim Ausführen.
 
 **`findAllAsync` auf einer großen Tabelle.** Lädt ohne Limit alles in den Heap.
 Für Stamm- und Konfigurationsdaten gedacht, nicht für Log-Tabellen.

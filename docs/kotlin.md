@@ -15,6 +15,7 @@ Serverseitige Einrichtung steht im [Haupt-README](../README.md).
 - [Datenbankzugriff](#datenbankzugriff)
 - [Listener](#listener)
 - [Commands](#commands)
+- [Cooldowns](#cooldowns)
 - [Konfiguration](#konfiguration)
 - [Annotationen](#annotationen)
 - [API-Referenz](#api-referenz)
@@ -52,7 +53,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("de.mecrytv:earthcore:1.6.0")
+    compileOnly("de.mecrytv:earthcore:1.7.1")
 }
 
 kotlin {
@@ -436,6 +437,104 @@ gesetzte Sperre aufweicht. Nimm eins von beidem, nicht beides.
 
 ---
 
+## Cooldowns
+
+Cooldowns liegen in EarthCores Datenbank und **überleben einen Serverneustart**.
+Gelesen wird trotzdem aus dem Speicher: EarthCore lädt beim Start alle noch
+laufenden Cooldowns in einen Cache und schreibt Änderungen im Hintergrund zurück.
+Deshalb sind alle Abfragen synchron und blockieren den Tick-Thread nicht.
+
+### Per Annotation am Command
+
+```kotlin
+@AutoCommand(name = "kit", description = "Holt dein Kit", permission = "earthshop.kit")
+@Cooldown(hours = 24, bypassPermission = "earthshop.kit.bypass")
+object KitCommand : BasicCommand {
+
+    override fun execute(source: CommandSourceStack, args: Array<out String>) {
+        source.sender.sendMessage("Kit ausgegeben.")
+    }
+}
+```
+
+Läuft noch ein Cooldown, wird `execute` gar nicht erst aufgerufen und der Spieler
+bekommt die Meldung aus der `messages.json`. Gestartet wird der Cooldown **nach**
+einem erfolgreichen Durchlauf — wirft dein Command, bleibt der Spieler frei.
+
+| Feld | Default | Wirkung |
+|---|---|---|
+| `seconds` / `minutes` / `hours` | `0` | Werden addiert. Mindestens eines muss gesetzt sein. |
+| `key` | Command-Name | Mehrere Commands mit demselben `key` teilen sich einen Cooldown |
+| `bypassPermission` | `""` | Wer sie hat, wird nie gebremst |
+| `messageKey` | `"cooldown.active"` | Pfad in der `messages.json` |
+
+```kotlin
+@AutoCommand(name = "warp")
+@Cooldown(minutes = 1, seconds = 30, key = "teleport")
+object WarpCommand : BasicCommand { … }
+```
+
+Die Konsole hat nie einen Cooldown — nur Spieler werden gebremst.
+
+### Direkt über die API
+
+```kotlin
+import de.mecrytv.earthcore.cooldown.api.CooldownRegistry
+import java.time.Duration
+
+val cooldowns = server.servicesManager.load(CooldownRegistry::class.java)!!
+
+cooldowns.start(player.uniqueId, "teleport", Duration.ofSeconds(30))
+cooldowns.extend(player.uniqueId, "teleport", Duration.ofSeconds(10))
+
+if (cooldowns.isActive(player.uniqueId, "teleport")) {
+    val rest = cooldowns.remaining(player.uniqueId, "teleport")
+    player.sendMessage("Noch ${rest.seconds}s")
+    return
+}
+
+cooldowns.clear(player.uniqueId, "teleport")
+cooldowns.clearAll(player.uniqueId)
+cooldowns.keys(player.uniqueId)
+```
+
+`start` überschreibt einen laufenden Cooldown, `extend` rechnet auf die Restzeit
+auf. Ist der Cooldown bereits abgelaufen, startet `extend` von jetzt an neu.
+`remaining` liefert `Duration.ZERO`, wenn keiner läuft.
+
+### Die Meldung anpassen
+
+Die Texte stehen in `plugins/EarthCore/messages.json`:
+
+```json
+{
+  "prefix": "<gray>[<gold>EarthCraft<gray>]</gray> ",
+  "cooldown": {
+    "active": "%prefix%<red>Bitte warte noch <yellow>%remaining%</yellow>."
+  }
+}
+```
+
+`%remaining%` wird als `1h 30m 15s` eingesetzt, Nullwerte fallen weg, angebrochene
+Sekunden werden aufgerundet. Formatiert wird mit MiniMessage.
+
+Eigene Texte legst du daneben und verweist per `messageKey` darauf:
+
+```json
+{
+  "kit": { "active": "%prefix%<red>Dein Kit gibt es erst in <yellow>%remaining%</yellow> wieder." }
+}
+```
+
+```kotlin
+@Cooldown(hours = 24, messageKey = "kit.active")
+```
+
+Fehlende Schlüssel werden beim Start aus dem Jar ergänzt, deine Änderungen bleiben
+stehen.
+
+---
+
 ## Konfiguration
 
 EarthCores eigene Konfiguration liegt im `ServicesManager` und ist über
@@ -476,6 +575,16 @@ val shopConfig = JsonConfigService(
 )
 ```
 
+Statt `ConfigDefaults.model(...)` kannst du eine fertige Datei aus deinem
+`resources`-Ordner als Vorlage nehmen:
+
+```kotlin
+defaults = ConfigDefaults.resource("config.json")
+```
+
+Gesucht wird im Jar **deines** Plugins, nicht in EarthCores. Brauchst du einen
+anderen ClassLoader, gibst du ihn als zweites Argument mit.
+
 Fehlende Schlüssel werden beim Start aus den Defaults ergänzt, vorhandene Werte
 bleiben unangetastet. Eine kaputte Datei wird weggesichert statt überschrieben.
 
@@ -491,6 +600,7 @@ bleiben unangetastet. Eine kaputte Datei wird weggesichert statt überschrieben.
 | `@JsonColumn(name = "")` | Erzwingt Gson-Serialisierung nach `LONGTEXT` |
 | `@AutoListener(name, description, requires)` | Bukkit-`Listener` — `registerEvents` |
 | `@AutoCommand(name, description, aliases, permission, requires)` | Paper-`BasicCommand` |
+| `@Cooldown(seconds, minutes, hours, key, bypassPermission, messageKey)` | Cooldown auf einem Command |
 
 `@Table`, `@PrimaryKey`, `@Column` und `@JsonColumn` liegen in
 `de.mecrytv.earthcore.database.annotations`, `@AutoListener` und `@AutoCommand` in
@@ -528,6 +638,21 @@ geprüft, bevor eine Verbindung aufgebaut wird.
 fun register(plugin: JavaPlugin, database: DatabaseService, vararg packages: String): RegistrationSummary
 fun register(plugin: JavaPlugin, vararg packages: String): RegistrationSummary
 ```
+
+### `CooldownRegistry`
+
+```kotlin
+fun start(subject: UUID, key: String, duration: Duration)
+fun extend(subject: UUID, key: String, by: Duration)
+fun clear(subject: UUID, key: String): Boolean
+fun clearAll(subject: UUID): Int
+fun isActive(subject: UUID, key: String): Boolean
+fun remaining(subject: UUID, key: String): Duration
+fun keys(subject: UUID): Set<String>
+```
+
+Alle Methoden sind synchron. Persistiert wird im Hintergrund in EarthCores
+Datenbank, Tabelle `cooldowns`.
 
 ### `RegistrationSummary`
 
@@ -585,6 +710,10 @@ die Tabelle scheitert mit *Unknown column*. Bis auf Weiteres manuell:
 ```sql
 ALTER TABLE shop_profiles ADD COLUMN notiz VARCHAR(255);
 ```
+
+**Cooldown-Dauer von 0.** `@Cooldown()` ohne `seconds`/`minutes`/`hours` und
+`start(..., Duration.ZERO)` werfen beide eine `IllegalArgumentException`. Beim
+Command fliegt sie schon beim Registrieren, nicht erst beim Ausführen.
 
 **`findAll` auf einer großen Tabelle.** Lädt ohne Limit alles in den Heap. Für
 Stamm- und Konfigurationsdaten gedacht, nicht für Log-Tabellen.
