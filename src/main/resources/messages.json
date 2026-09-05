@@ -1,5 +1,5 @@
 {
-  "prefix": "<gray>[<gold>EarthCraft<gray>]</gray> ",
+  "prefix": "<gray>[<gold>%plugin%<gray>]</gray> ",
   "cooldown": {
     "active": "%prefix%<red>Bitte warte noch <yellow>%remaining%</yellow>."
   }

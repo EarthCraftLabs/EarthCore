@@ -61,7 +61,7 @@ class CooldownGateTest {
     private val messages: ConfigService = JsonConfigService(
         file = java.io.File(dir, "messages.json"),
         defaults = ConfigDefaults.values(
-            "prefix" to "[EC] ",
+            "prefix" to "[%plugin%] ",
             "cooldown.active" to "%prefix%Bitte warte noch %remaining%.",
             "kit.active" to "Kit erst in %remaining%.",
         ),
@@ -72,8 +72,8 @@ class CooldownGateTest {
         dir.deleteRecursively()
     }
 
-    private fun gate(meta: Cooldown?): BasicCommand =
-        CooldownGate.wrap(command, meta, "test", cooldowns, messages)
+    private fun gate(meta: Cooldown?, plugin: String = "EarthShop"): BasicCommand =
+        CooldownGate.wrap(command, meta, plugin, "test", cooldowns, messages)
 
     private fun meta(
         seconds: Long = 30,
@@ -158,7 +158,7 @@ class CooldownGateTest {
 
         assertEquals(0, command.aufrufe)
         assertTrue(cooldowns.gestartet.isEmpty())
-        assertEquals(listOf("[EC] Bitte warte noch 1m 30s."), gesendet)
+        assertEquals(listOf("[EarthShop] Bitte warte noch 1m 30s."), gesendet)
     }
 
     @Test
@@ -214,11 +214,24 @@ class CooldownGateTest {
         val kaputt = object : BasicCommand {
             override fun execute(source: CommandSourceStack, args: Array<out String>) = error("kaputt")
         }
-        val gated = CooldownGate.wrap(kaputt, meta(), "test", cooldowns, messages)
+        val gated = CooldownGate.wrap(kaputt, meta(), "EarthShop", "test", cooldowns, messages)
 
         runCatching { gated.execute(quelle(spielerMit()), emptyArray()) }
 
         assertTrue(cooldowns.gestartet.isEmpty())
+    }
+
+    @Test
+    fun `der praefix traegt den namen des aufrufenden plugins, nicht EarthCore`() {
+        cooldowns.rest = Duration.ofSeconds(5)
+
+        gate(meta(), plugin = "EarthShop").execute(quelle(spielerMit()), emptyArray())
+        gate(meta(), plugin = "EarthQuests").execute(quelle(spielerMit()), emptyArray())
+
+        assertEquals(
+            listOf("[EarthShop] Bitte warte noch 5s.", "[EarthQuests] Bitte warte noch 5s."),
+            gesendet,
+        )
     }
 
     @Test

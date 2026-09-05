@@ -16,6 +16,7 @@ internal class CooldownGate(
     private val delegate: BasicCommand,
     private val cooldowns: CooldownRegistry,
     private val messages: ConfigService,
+    private val pluginName: String,
     private val key: String,
     private val duration: Duration,
     private val bypassPermission: String,
@@ -51,11 +52,9 @@ internal class CooldownGate(
 
     private fun message(remaining: Duration): Component {
         val rest = DurationFormat.humanize(remaining)
-        val raw = messages.getString(
-            messageKey,
-            "remaining" to rest,
-            "prefix" to messages.getString("prefix").orEmpty(),
-        ) ?: "<red>Bitte warte noch <yellow>$rest</yellow>."
+        val prefix = messages.getString("prefix", "plugin" to pluginName).orEmpty()
+        val raw = messages.getString(messageKey, "remaining" to rest, "prefix" to prefix)
+            ?: "$prefix<red>Bitte warte noch <yellow>$rest</yellow>."
         return MiniMessage.miniMessage().deserialize(raw)
     }
 
@@ -64,6 +63,7 @@ internal class CooldownGate(
         fun wrap(
             command: BasicCommand,
             meta: Cooldown?,
+            pluginName: String,
             fallbackKey: String,
             cooldowns: CooldownRegistry,
             messages: ConfigService,
@@ -77,6 +77,7 @@ internal class CooldownGate(
                 delegate = command,
                 cooldowns = cooldowns,
                 messages = messages,
+                pluginName = pluginName,
                 key = meta.key.ifEmpty { fallbackKey },
                 duration = duration,
                 bypassPermission = meta.bypassPermission,

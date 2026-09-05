@@ -91,7 +91,9 @@ bremsen den Tick-Thread nicht. Ohne Annotation geht es genauso über die API:
 `cooldowns.start(uuid, "teleport", Duration.ofSeconds(30))`.
 
 Die Meldung bei aktivem Cooldown steht in `plugins/EarthCore/messages.json` und
-wird mit MiniMessage formatiert.
+wird mit MiniMessage formatiert. Der Praefix traegt den Namen des **aufrufenden**
+Plugins (`%plugin%`) — ein Cooldown aus EarthShop meldet sich als `[EarthShop]`,
+nicht als `[EarthCore]`. Fuer den Spieler wirkt es wie ein einziges Plugin.
 
 ### Threading
 
@@ -120,7 +122,7 @@ wo der Server ohnehin noch keine Spieler annimmt.
 Ergebnis: **`build/libs/EarthCore.jar`** (~8 MB) — das Shadow-Jar mit Kotlin,
 Coroutines, HikariCP und dem MariaDB-Treiber.
 
-> Daneben liegt `EarthCore-1.7.1.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
+> Daneben liegt `EarthCore-1.8.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
 > ist das Jar **ohne** Abhängigkeiten und gehört nicht auf den Server.
 
 ---
@@ -179,7 +181,7 @@ Plugins laufen dann gar nicht erst an, statt reihenweise Folgefehler zu werfen.
 ./gradlew publishToMavenLocal
 ```
 
-Legt `de.mecrytv:earthcore:1.7.1` in `~/.m2/repository` ab. Veröffentlicht wird
+Legt `de.mecrytv:earthcore:1.8.0` in `~/.m2/repository` ab. Veröffentlicht wird
 das **Shadow-Jar** — das andere Projekt bekommt mit einer einzigen Abhängigkeit
 auch Kotlin, Coroutines und HikariCP auf den Compile-Classpath.
 

@@ -53,7 +53,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("de.mecrytv:earthcore:1.7.1")
+    compileOnly("de.mecrytv:earthcore:1.8.0")
 }
 
 kotlin {
@@ -508,12 +508,16 @@ Die Texte stehen in `plugins/EarthCore/messages.json`:
 
 ```json
 {
-  "prefix": "<gray>[<gold>EarthCraft<gray>]</gray> ",
+  "prefix": "<gray>[<gold>%plugin%<gray>]</gray> ",
   "cooldown": {
     "active": "%prefix%<red>Bitte warte noch <yellow>%remaining%</yellow>."
   }
 }
 ```
+
+`%plugin%` ist der Name **deines** Plugins, nicht EarthCore. Ein Cooldown aus
+EarthShop meldet sich also als `[EarthShop]` — fuer den Spieler sieht es aus wie
+ein einziges Plugin, obwohl EarthCore die Nachricht verschickt.
 
 `%remaining%` wird als `1h 30m 15s` eingesetzt, Nullwerte fallen weg, angebrochene
 Sekunden werden aufgerundet. Formatiert wird mit MiniMessage.

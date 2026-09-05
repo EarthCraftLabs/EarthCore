@@ -77,6 +77,7 @@ class ReflectionAutoRegistrar(
                     val gated = CooldownGate.wrap(
                         PermissionGate.wrap(command, meta.permission),
                         type.getAnnotation(Cooldown::class.java),
+                        plugin.name,
                         meta.name,
                         cooldowns,
                         messages,
