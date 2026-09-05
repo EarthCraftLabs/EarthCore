@@ -26,6 +26,7 @@ Commands.
 | `CoreVersion` | Sagt, welche EarthCore-Version laeuft, und prueft semver-korrekt gegen eine Mindestanforderung. |
 | `LogbookProvider` | Zentrales Logbuch: Konsole, Datenbank und Discord-Webhooks in einem Aufruf. |
 | `ItemBuilder` | Unveraenderlicher Builder fuer ItemStacks, MiniMessage inklusive. |
+| `GuiProvider` | Deklaratives Menue-System mit Masken, Seiten, Verlauf und Nachladen. |
 
 Alle liegen in Bukkits `ServicesManager`. Dein Plugin braucht die
 `EarthCore`-Klasse nie zu kennen — ein `load(DatabaseProvider.class)` reicht.
@@ -134,6 +135,28 @@ Banner sind abgedeckt, eigene Daten liegen im PersistentDataContainer.
 Intern ein Mix: Data Components dort, wo sie mehr koennen (Glitzern ohne
 Verzauberung, Stapelgroesse, Kopf-Texturen), sonst das stabile `ItemMeta`.
 
+### Menues
+
+```kotlin
+class ShopGui(private val artikel: List<Artikel>) : Gui(GuiType.chest(4), titel) {
+
+    override fun render(view: GuiView) {
+        view.mask("#########", "#.......#", "P###F###N")
+        view.bind('#', Buttons.filler())
+        view.paginate('.', artikel) { GuiItem(it.item()) { klick -> kaufen(klick) } }
+        view.item(view.slots('N').first(), Buttons.nextPage(view))
+    }
+}
+```
+
+Deklarativ: du beschreibst, wie das Menue bei einem Zustand aussieht, EarthCore
+zeichnet nach `refresh()` nur die geaenderten Slots neu. Masken statt Slot-Nummern,
+Seiten mit fertigen Blaetter-Buttons, Verlauf mit Zurueck-Knopf, geteilte Menues
+fuer mehrere Betrachter, Hopper und Ofen als Typen und der Amboss als Texteingabe.
+
+Inhalte aus der Datenbank holt `view.load(...)` abseits vom Tick-Thread und zeigt
+solange einen Platzhalter.
+
 ### Threading
 
 Datenbankzugriffe laufen **nie** auf dem Tick-Thread. Kotlin bekommt
@@ -161,7 +184,7 @@ wo der Server ohnehin noch keine Spieler annimmt.
 Ergebnis: **`build/libs/EarthCore.jar`** (~8 MB) — das Shadow-Jar mit Kotlin,
 Coroutines, HikariCP und dem MariaDB-Treiber.
 
-> Daneben liegt `EarthCore-1.11.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
+> Daneben liegt `EarthCore-1.12.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
 > ist das Jar **ohne** Abhängigkeiten und gehört nicht auf den Server.
 
 ---
@@ -220,7 +243,7 @@ Plugins laufen dann gar nicht erst an, statt reihenweise Folgefehler zu werfen.
 ./gradlew publishToMavenLocal
 ```
 
-Legt `de.mecrytv:earthcore:1.11.0` in `~/.m2/repository` ab. Veröffentlicht wird
+Legt `de.mecrytv:earthcore:1.12.0` in `~/.m2/repository` ab. Veröffentlicht wird
 das **Shadow-Jar** — das andere Projekt bekommt mit einer einzigen Abhängigkeit
 auch Kotlin, Coroutines und HikariCP auf den Compile-Classpath.
 
@@ -255,9 +278,12 @@ de.mecrytv.earthcore
 ├── logging/
 │   ├── api/                  Logbook, LogbookProvider, LogEntry, LogLevel, LogSink
 │   └── internal/             Konsolen-, Datenbank- und Discord-Senke, Webhook-Versand
-└── item/
-    ├── api/                  ItemBuilder
-    └── internal/             MiniMessage-Aufbereitung, Texturpruefung
+├── item/
+│   ├── api/                  ItemBuilder
+│   └── internal/             MiniMessage-Aufbereitung, Texturpruefung
+└── gui/
+    ├── api/                  Gui, GuiView, GuiType, GuiMask, Page, Buttons, AnvilPrompt
+    └── internal/             Sitzungen, Zeichenpuffer mit Diffing, Nachlade-Cache, Bukkit-Listener
 ```
 
 Interfaces liegen in `api/`, Implementierungen in `internal/`. Nur `api/` und

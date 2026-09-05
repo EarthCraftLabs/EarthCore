@@ -18,6 +18,7 @@ steht im [Haupt-README](../README.md).
 - [Commands](#commands)
 - [Cooldowns](#cooldowns)
 - [Items bauen](#items-bauen)
+- [Menues bauen](#menues-bauen)
 - [Logging](#logging)
 - [Konfiguration](#konfiguration)
 - [Versionierung](#versionierung)
@@ -47,7 +48,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("de.mecrytv:earthcore:1.11.0")
+    compileOnly("de.mecrytv:earthcore:1.12.0")
 }
 
 java {
@@ -75,7 +76,7 @@ java {
   <dependency>
     <groupId>de.mecrytv</groupId>
     <artifactId>earthcore</artifactId>
-    <version>1.11.0</version>
+    <version>1.12.0</version>
     <scope>provided</scope>
   </dependency>
 </dependencies>
@@ -765,6 +766,154 @@ ItemBuilder.of(Material.STONE)
         .meta(SkullMeta.class, meta -> meta.setNoteBlockSound(key))
         .build();
 ```
+
+---
+
+## Menues bauen
+
+Das GUI-System ist **deklarativ**: du beschreibst in `render`, wie das Menue bei
+einem gegebenen Zustand aussieht. Zustand aendern, `refresh()` rufen - EarthCore
+zeichnet nur die Slots neu, die sich tatsaechlich geaendert haben. Ein manuelles
+`setItem` gibt es nicht, und der Fehler *vergessen zu aktualisieren* kann nicht
+passieren.
+
+```java
+public class ShopGui extends Gui {
+
+    private final List<Artikel> artikel;
+    private boolean nurGuenstig = false;
+
+    public ShopGui(List<Artikel> artikel) {
+        super(GuiType.chest(4), Component.text("Shop"));
+        this.artikel = artikel;
+    }
+
+    @Override
+    public void render(GuiView view) {
+        view.mask("#########", "#.......#", "#.......#", "P###F###N");
+        view.bind('#', Buttons.filler());
+
+        view.paginate('.', artikel, eintrag -> GuiItem.of(
+                ItemBuilder.of(Material.EMERALD).name("<green>" + eintrag.name()).build(),
+                klick -> klick.getViewer().sendMessage("Gekauft: " + eintrag.name())));
+
+        view.item(view.slots('P').get(0), Buttons.previousPage(view));
+        view.item(view.slots('N').get(0), Buttons.nextPage(view));
+        view.item(view.slots('F').get(0), GuiItem.of(filterItem(), klick -> {
+            nurGuenstig = !nurGuenstig;
+            refresh();
+        }));
+    }
+}
+
+GuiProvider guis = getServer().getServicesManager().load(GuiProvider.class);
+guis.open(spieler, new ShopGui(artikel));
+```
+
+### Masken statt Slot-Nummern
+
+`mask(...)` beschreibt das Layout als Bild. Jedes Zeichen ist ein Symbol, das du
+danach belegst:
+
+- `bind('#', item)` legt das Item auf **alle** Slots mit diesem Symbol
+- `slots('P')` gibt dir die Slot-Nummern zurueck, wenn du sie einzeln brauchst
+- `paginate('.', eintraege, render)` verteilt eine Liste auf die Slots des Symbols
+
+Leerzeichen in der Maske dienen nur der Lesbarkeit: `"# # # # #"` ist dasselbe wie
+`"#####"`. Ungleich lange Zeilen werden mit klarer Meldung abgelehnt.
+
+### Seiten
+
+`paginate` uebernimmt das Rechnen. `view.getPage()` sagt dir, wo du stehst
+(`getIndex()`, `getCount()`, `getFirst()`, `getLast()`), `nextPage()` und
+`previousPage()` blaettern und loesen automatisch ein Neuzeichnen aus. Die fertigen
+Blaetter-Buttons in `Buttons` graut EarthCore am Anfang und Ende selbst aus.
+
+### Nachladen aus der Datenbank
+
+```java
+@Override
+public void render(GuiView view) {
+    List<Artikel> artikel = view.load("artikel", () -> database.findAllAsync(Artikel.class).join());
+    if (artikel == null) {
+        view.bind('.', Buttons.loading());
+        return;
+    }
+    view.paginate('.', artikel, eintrag -> ...);
+}
+```
+
+Der erste `render` startet das Laden **abseits vom Tick-Thread** und liefert
+`null`. Sobald die Daten da sind, zeichnet EarthCore das Menue von selbst neu und
+`load` gibt den Wert zurueck. Pro Schluessel wird genau einmal geladen, auch wenn
+zwischendurch mehrfach gezeichnet wird. Faellt der Ladevorgang auf die Nase, steht
+es im Log und das Menue bleibt bedienbar.
+
+### Live-Aktualisierung
+
+```java
+@Override
+public boolean onTick() {
+    return true;
+}
+```
+
+Gibt `onTick()` `true` zurueck, zeichnet EarthCore das Menue einmal pro Sekunde
+neu - dank Diffing kostet das nur die Slots, die sich wirklich aendern.
+
+### Navigation
+
+```java
+view.open(new EinstellungenGui());   // legt das aktuelle Menue auf den Verlauf
+view.back();                         // eine Ebene zurueck
+guis.replace(spieler, gui);          // ohne Verlaufseintrag
+```
+
+`Buttons.back(view)` ist der fertige Zurueck-Knopf. `view.getCanGoBack()` sagt dir,
+ob es ueberhaupt etwas gibt, wohin.
+
+### Geteilte Menues
+
+```java
+public class TeamKiste extends Gui {
+    public TeamKiste() {
+        super(GuiType.chest(3), Component.text("Team"), true);
+    }
+}
+```
+
+Standard ist eine Instanz pro Spieler. Mit `shared = true` teilen sich alle
+Betrachter eine Instanz - ein `refresh()` erreicht dann alle gleichzeitig. Gedacht
+fuer Auktionen oder Team-Kisten.
+
+### Weitere Inventartypen
+
+```java
+new Gui(GuiType.HOPPER, titel) { ... };
+new Gui(GuiType.DISPENSER, titel) { ... };
+new Gui(GuiType.chest(6), titel) { ... };
+```
+
+Fuer Texteingabe gibt es den Amboss:
+
+```java
+guis.open(spieler, new AnvilPrompt(
+        Component.text("Name eingeben"),
+        "Vorschlag",
+        text -> spieler.sendMessage("Eingegeben: " + text)));
+```
+
+### Was EarthCore dabei abfaengt
+
+Klicks im Menue sind **immer abgebrochen**, dein Handler entscheidet, was
+passiert. Willst du, dass Spieler ihr eigenes Inventar bedienen duerfen, setzt du
+`setInteractablePlayerInventory(true)`.
+
+Wirft dein `render` oder ein Klick-Handler, landet das im Log statt den
+Tick-Thread mitzureissen - das Menue bleibt offen und bedienbar.
+
+Schliesst ein Spieler das Menue oder verlaesst den Server, raeumt EarthCore die
+Sitzung selbst auf. Du musst nichts abmelden.
 
 ---
 

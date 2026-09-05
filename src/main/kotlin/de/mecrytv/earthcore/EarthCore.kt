@@ -12,6 +12,9 @@ import de.mecrytv.earthcore.database.api.DatabaseCredentials
 import de.mecrytv.earthcore.database.api.DatabaseProvider
 import de.mecrytv.earthcore.database.api.DatabaseService
 import de.mecrytv.earthcore.database.internal.HikariDatabaseProvider
+import de.mecrytv.earthcore.gui.api.GuiProvider
+import de.mecrytv.earthcore.gui.internal.GuiListener
+import de.mecrytv.earthcore.gui.internal.StandardGuiProvider
 import de.mecrytv.earthcore.logging.api.LogSink
 import de.mecrytv.earthcore.logging.api.LogbookProvider
 import de.mecrytv.earthcore.logging.api.LoggingSettings
@@ -62,6 +65,9 @@ class EarthCore : JavaPlugin() {
     lateinit var logbooks: StandardLogbookProvider
         private set
 
+    lateinit var guis: GuiProvider
+        private set
+
     override fun onEnable() {
         scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         val coreVersion = PluginCoreVersion(pluginMeta.version)
@@ -103,6 +109,10 @@ class EarthCore : JavaPlugin() {
         }
         logbooks = StandardLogbookProvider(sinks, logger)
 
+        val guiProvider = StandardGuiProvider(this, logger) { aufgabe -> scope.launch { aufgabe.run() } }
+        guis = guiProvider
+        server.pluginManager.registerEvents(GuiListener(guiProvider), this)
+
         autoRegistrar = ReflectionAutoRegistrar(cooldowns, messages)
 
         server.servicesManager.register(DatabaseProvider::class.java, databases, this, ServicePriority.Normal)
@@ -111,9 +121,11 @@ class EarthCore : JavaPlugin() {
         server.servicesManager.register(CooldownRegistry::class.java, cooldowns, this, ServicePriority.Normal)
         server.servicesManager.register(CoreVersion::class.java, coreVersion, this, ServicePriority.Normal)
         server.servicesManager.register(LogbookProvider::class.java, logbooks, this, ServicePriority.Normal)
+        server.servicesManager.register(GuiProvider::class.java, guis, this, ServicePriority.Normal)
 
         server.scheduler.runTaskTimerAsynchronously(this, Runnable { cooldowns.prune() }, PRUNE_TICKS, PRUNE_TICKS)
         server.scheduler.runTaskTimerAsynchronously(this, Runnable { discordSink.flush() }, FLUSH_TICKS, FLUSH_TICKS)
+        server.scheduler.runTaskTimer(this, Runnable { guiProvider.tick() }, TICK_TICKS, TICK_TICKS)
         server.scheduler.runTaskTimerAsynchronously(
             this,
             Runnable { scope.launch { databaseSink.prune() } },
@@ -136,5 +148,7 @@ class EarthCore : JavaPlugin() {
         const val PRUNE_TICKS = 20L * 60 * 5
 
         const val FLUSH_TICKS = 40L
+
+        const val TICK_TICKS = 20L
     }
 }

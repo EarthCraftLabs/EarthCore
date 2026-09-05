@@ -10,6 +10,33 @@ sie sich beim Bauen von dort.
 
 ---
 
+## [1.12.0]
+
+### Neu
+
+- **GUI-System.** Deklarativ und reaktiv: `render(view)` beschreibt das Menue fuer
+  den aktuellen Zustand, `refresh()` zeichnet nur die tatsaechlich geaenderten
+  Slots neu. Kein manuelles `setItem`, damit auch kein vergessenes Update.
+- **Masken** statt Slot-Rechnerei: `mask("#########", "#.......#")`, dazu
+  `bind(symbol, item)`, `slots(symbol)` und `paginate(symbol, eintraege)`.
+- **Seiten** mit `Page` (Index, Anzahl, erste/letzte) und fertigen Blaetter-Buttons,
+  die sich am Anfang und Ende selbst ausgrauen.
+- **Nachladen** ueber `view.load(key) { ... }`: laeuft abseits vom Tick-Thread,
+  liefert zunaechst `null` fuer einen Platzhalter und zeichnet nach dem Laden von
+  selbst neu. Pro Schluessel genau ein Ladevorgang.
+- **Live-Aktualisierung** ueber `onTick()`.
+- **Navigation** mit Verlauf: `open`, `back`, `replace` und ein fertiger
+  Zurueck-Knopf.
+- **Geteilte Menues** ueber `shared = true` - eine Instanz, viele Betrachter, ein
+  `refresh()` erreicht alle.
+- **Weitere Inventartypen** (Hopper, Dispenser, Dropper, Ofen, Braustand) und der
+  **Amboss als Texteingabe** ueber `AnvilPrompt`.
+
+Klicks sind immer abgebrochen, bis ein Handler etwas anderes tut. Fehler in
+`render` oder in einem Klick-Handler landen im Log, statt das Menue oder den
+Tick-Thread mitzureissen. Sitzungen raeumt EarthCore beim Schliessen und beim
+Verlassen des Servers selbst auf.
+
 ## [1.11.0]
 
 ### Neu
@@ -123,6 +150,7 @@ Entwicklung und existieren nicht als Commit.
   greifen auf Kotlin-Properties *und* Java-Feldern, zu jeder `suspend`-Methode
   gibt es eine `CompletableFuture`-Variante.
 
+[1.12.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.12.0
 [1.11.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.11.0
 [1.10.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.10.0
 [1.9.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.9.0
