@@ -24,6 +24,7 @@ Commands.
 | `AutoRegistrar` | Durchsucht die Packages deines Plugins und registriert alles mit passender Annotation. |
 | `CooldownRegistry` | Cooldowns pro Spieler, in der Datenbank abgelegt und damit neustartfest. Abfragen bleiben synchron. |
 | `CoreVersion` | Sagt, welche EarthCore-Version laeuft, und prueft semver-korrekt gegen eine Mindestanforderung. |
+| `LogbookProvider` | Zentrales Logbuch: Konsole, Datenbank und Discord-Webhooks in einem Aufruf. |
 
 Alle liegen in Bukkits `ServicesManager`. Dein Plugin braucht die
 `EarthCore`-Klasse nie zu kennen — ein `load(DatabaseProvider.class)` reicht.
@@ -96,6 +97,22 @@ wird mit MiniMessage formatiert. Der Praefix traegt den Namen des **aufrufenden*
 Plugins (`%plugin%`) — ein Cooldown aus EarthShop meldet sich als `[EarthShop]`,
 nicht als `[EarthCore]`. Fuer den Spieler wirkt es wie ein einziges Plugin.
 
+### Logging mit Discord
+
+```kotlin
+val logbook = server.servicesManager.load(LogbookProvider::class.java)!!.of(this)
+
+logbook.error("technik", "Backup fehlgeschlagen", exception)
+logbook.record("moderation", team.uniqueId, "Bann", mapOf("ziel" to name, "grund" to "Griefing"))
+```
+
+Ein Aufruf, drei Ziele: Konsole, Tabelle `log_entries` und Discord. Welche
+Eintraege nach Discord gehen, entscheiden pro Webhook ein Mindest-Level und eine
+Kategorienliste - Fehler in den Technik-Kanal, Team-Aktionen in den Team-Kanal.
+
+Der Versand laeuft gebuendelt und asynchron mit Ratenbegrenzung; ein Fehlersturm
+bringt weder den Tick-Thread noch Discord ins Straucheln.
+
 ### Threading
 
 Datenbankzugriffe laufen **nie** auf dem Tick-Thread. Kotlin bekommt
@@ -123,7 +140,7 @@ wo der Server ohnehin noch keine Spieler annimmt.
 Ergebnis: **`build/libs/EarthCore.jar`** (~8 MB) — das Shadow-Jar mit Kotlin,
 Coroutines, HikariCP und dem MariaDB-Treiber.
 
-> Daneben liegt `EarthCore-1.9.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
+> Daneben liegt `EarthCore-1.10.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
 > ist das Jar **ohne** Abhängigkeiten und gehört nicht auf den Server.
 
 ---
@@ -182,7 +199,7 @@ Plugins laufen dann gar nicht erst an, statt reihenweise Folgefehler zu werfen.
 ./gradlew publishToMavenLocal
 ```
 
-Legt `de.mecrytv:earthcore:1.9.0` in `~/.m2/repository` ab. Veröffentlicht wird
+Legt `de.mecrytv:earthcore:1.10.0` in `~/.m2/repository` ab. Veröffentlicht wird
 das **Shadow-Jar** — das andere Projekt bekommt mit einer einzigen Abhängigkeit
 auch Kotlin, Coroutines und HikariCP auf den Compile-Classpath.
 
@@ -211,9 +228,12 @@ de.mecrytv.earthcore
 ├── cooldown/
 │   ├── api/                  CooldownRegistry
 │   └── internal/             Speicher-Cache mit Datenbank dahinter, Zeitformatierung
-└── version/
-    ├── api/                  CoreVersion
-    └── internal/             Semver-Vergleich
+├── version/
+│   ├── api/                  CoreVersion
+│   └── internal/             Semver-Vergleich
+└── logging/
+    ├── api/                  Logbook, LogbookProvider, LogEntry, LogLevel, LogSink
+    └── internal/             Konsolen-, Datenbank- und Discord-Senke, Webhook-Versand
 ```
 
 Interfaces liegen in `api/`, Implementierungen in `internal/`. Nur `api/` und

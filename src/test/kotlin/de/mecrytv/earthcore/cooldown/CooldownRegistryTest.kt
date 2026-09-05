@@ -45,6 +45,10 @@ private class FakeDatabase : DatabaseService {
     @Suppress("UNCHECKED_CAST")
     override suspend fun <T : Any> findAll(modelClass: Class<T>): List<T> = rows.values.toList() as List<T>
 
+    override suspend fun execute(sql: String, vararg parameters: Any?): Int = 0
+
+    override fun executeAsync(sql: String, vararg parameters: Any?): CompletableFuture<Int> = unsupported()
+
     override fun <T : Any> saveAsync(entity: T): CompletableFuture<Void> = unsupported()
 
     override fun <T : Any> updateAsync(entity: T): CompletableFuture<Void> = unsupported()

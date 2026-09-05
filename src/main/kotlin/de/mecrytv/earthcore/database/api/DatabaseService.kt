@@ -20,6 +20,8 @@ interface DatabaseService {
 
     suspend fun <T : Any> findAll(modelClass: Class<T>): List<T>
 
+    suspend fun execute(sql: String, vararg parameters: Any?): Int
+
     fun <T : Any> saveAsync(entity: T): CompletableFuture<Void>
 
     fun <T : Any> updateAsync(entity: T): CompletableFuture<Void>
@@ -29,6 +31,8 @@ interface DatabaseService {
     fun <T : Any, ID : Any> findByIdAsync(modelClass: Class<T>, id: ID): CompletableFuture<T?>
 
     fun <T : Any> findAllAsync(modelClass: Class<T>): CompletableFuture<List<T>>
+
+    fun executeAsync(sql: String, vararg parameters: Any?): CompletableFuture<Int>
 }
 
 inline fun <reified T : Any> DatabaseService.registerModel() = registerModel(T::class.java)

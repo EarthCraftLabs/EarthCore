@@ -10,6 +10,25 @@ sie sich beim Bauen von dort.
 
 ---
 
+## [1.10.0]
+
+### Neu
+
+- **Zentrales Logging ueber `LogbookProvider`.** Ein Aufruf schreibt gleichzeitig
+  in die Konsole, in die Tabelle `log_entries` und an passende Discord-Webhooks.
+  Jeder Eintrag hat eine Kategorie, einen Level und optional Akteur, Details und
+  eine Ausnahme. `record(...)` ist der Einstieg fuer nachvollziehbare Aktionen.
+- **Discord-Webhooks mit Routing.** Pro Webhook ein Mindest-Level und eine
+  Kategorienliste, konfigurierbar in der `config.json`. Der Versand sammelt bis
+  zu zehn Embeds pro Nachricht, haelt bei `429` die `Retry-After`-Pause ein und
+  laeuft asynchron - der Tick-Thread wartet nie. Die Webhook-URL wird in
+  Meldungen maskiert.
+- **`@Column(text = true)`** legt eine Spalte als `LONGTEXT` statt `VARCHAR` an -
+  noetig fuer Nachrichten und Stacktraces.
+- **`DatabaseService.execute(sql, ...)`** als Ausweichweg fuer Abfragen, die sich
+  nicht ueber Models ausdruecken lassen. Parameter werden gebunden, nicht
+  eingesetzt. Wird intern fuers Aufraeumen der Logtabelle genutzt.
+
 ## [1.9.0]
 
 ### Neu
@@ -81,6 +100,7 @@ Entwicklung und existieren nicht als Commit.
   greifen auf Kotlin-Properties *und* Java-Feldern, zu jeder `suspend`-Methode
   gibt es eine `CompletableFuture`-Variante.
 
+[1.10.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.10.0
 [1.9.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.9.0
 [1.8.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.8.0
 [1.7.1]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.7.1

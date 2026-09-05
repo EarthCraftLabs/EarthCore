@@ -23,6 +23,7 @@ internal class ColumnMeta private constructor(
     private val javaType: Type,
     private val nullable: Boolean,
     private val length: Int,
+    private val text: Boolean,
 ) {
 
     val definition: String get() = "`$name` $sqlType" + if (nullable) "" else " NOT NULL"
@@ -40,7 +41,8 @@ internal class ColumnMeta private constructor(
 
     private val sqlType: String
         get() = when (kind) {
-            ColumnKind.STRING, ColumnKind.ENUM -> "VARCHAR($length)"
+            ColumnKind.STRING -> if (text) "LONGTEXT" else "VARCHAR($length)"
+            ColumnKind.ENUM -> "VARCHAR($length)"
             ColumnKind.UUID -> "CHAR(36)"
             ColumnKind.INT -> "INT"
             ColumnKind.LONG -> "BIGINT"
@@ -110,6 +112,7 @@ internal class ColumnMeta private constructor(
                 javaType = field.genericType,
                 nullable = property?.returnType?.isMarkedNullable ?: !field.type.isPrimitive,
                 length = column?.length ?: 255,
+                text = column?.text ?: false,
             )
         }
 

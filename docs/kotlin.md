@@ -16,6 +16,7 @@ Serverseitige Einrichtung steht im [Haupt-README](../README.md).
 - [Listener](#listener)
 - [Commands](#commands)
 - [Cooldowns](#cooldowns)
+- [Logging](#logging)
 - [Konfiguration](#konfiguration)
 - [Versionierung](#versionierung)
 - [Annotationen](#annotationen)
@@ -54,7 +55,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("de.mecrytv:earthcore:1.9.0")
+    compileOnly("de.mecrytv:earthcore:1.10.0")
 }
 
 kotlin {
@@ -537,6 +538,98 @@ Eigene Texte legst du daneben und verweist per `messageKey` darauf:
 
 Fehlende Schlüssel werden beim Start aus dem Jar ergänzt, deine Änderungen bleiben
 stehen.
+
+---
+
+## Logging
+
+EarthCore bringt ein zentrales Logbuch mit. Jeder Eintrag geht gleichzeitig an
+die Konsole, in die Datenbank und - wenn er zum Filter passt - an einen
+Discord-Webhook.
+
+```kotlin
+import de.mecrytv.earthcore.logging.api.LogbookProvider
+import de.mecrytv.earthcore.logging.api.record
+
+val logbook = server.servicesManager.load(LogbookProvider::class.java)!!.of(this)
+
+logbook.info("shop", "Laden geoeffnet")
+logbook.warn("shop", "Lager fast leer")
+logbook.error("shop", "Kauf fehlgeschlagen", exception)
+logbook.debug("shop", "Nur sichtbar, wenn debug an ist")
+```
+
+Der erste Parameter ist die **Kategorie**. Danach wird nach Discord geroutet und
+in der Datenbank gefiltert - waehl sie so, wie du spaeter suchen willst
+(`shop`, `moderation`, `technik`).
+
+### Nachvollziehbare Aktionen
+
+Fuer *wer hat was getan* gibt es `record`, mit Akteur und beliebigen Details:
+
+```kotlin
+logbook.record(
+    category = "moderation",
+    actor = team.uniqueId,
+    message = "Bann ausgesprochen",
+    "ziel" to opfer.name,
+    "grund" to "Griefing",
+    "dauer" to "7d",
+)
+```
+
+Die Details landen als JSON in der Datenbank und als Felder im Discord-Embed.
+
+### Volle Kontrolle
+
+```kotlin
+logbook.log(
+    LogEntry(
+        level = LogLevel.WARN,
+        category = "technik",
+        message = "Backup uebersprungen",
+        details = mapOf("grund" to "kein Platz"),
+    ),
+)
+```
+
+`plugin` und `timestamp` fuellt EarthCore selbst.
+
+### Einrichtung in der config.json
+
+```json
+"logging": {
+  "debug": false,
+  "retentionDays": 30,
+  "discord": [
+    { "url": "https://discord.com/api/webhooks/...", "minLevel": "WARN", "categories": [], "username": "EarthCraft" },
+    { "url": "https://discord.com/api/webhooks/...", "minLevel": "INFO", "categories": ["moderation"], "username": "EarthCraft" }
+  ]
+}
+```
+
+Pro Eintrag ein Webhook. `minLevel` ist die Untergrenze (`DEBUG`, `INFO`, `WARN`,
+`ERROR`), `categories` schraenkt zusaetzlich ein - leer heisst alle. So gehen
+Fehler in den Technik-Kanal und Team-Aktionen in den Team-Kanal, ohne sich zu
+vermischen.
+
+`retentionDays` raeumt die Tabelle `log_entries` auf; `0` schaltet das Aufraeumen
+ab. `debug` entscheidet, ob `debug(...)`-Eintraege ueberhaupt in der Konsole
+landen.
+
+### Was EarthCore dabei abfaengt
+
+Discord wird **nie** direkt aus deinem Aufruf heraus angesprochen. Eintraege
+sammeln sich in einer Warteschlange und gehen alle zwei Sekunden gebuendelt raus,
+bis zu zehn Embeds pro Nachricht. Antwortet Discord mit `429`, wird die Pause aus
+`Retry-After` eingehalten und danach weitergemacht. Die Warteschlange ist
+gedeckelt, ein Fehlersturm kann also keinen Speicher fressen.
+
+Faellt ein Ziel aus, laufen die anderen weiter - und Fehler eines Logziels gehen
+an den normalen Plugin-Logger, nicht wieder ins Logbuch. Sonst haettest du eine
+Endlosschleife.
+
+Die Webhook-URL taucht in keiner Meldung auf; im Log steht nur `...abc123`.
 
 ---
 

@@ -148,6 +148,20 @@ class HikariDatabaseService(
         }
     }
 
+    override suspend fun execute(sql: String, vararg parameters: Any?): Int = withContext(Dispatchers.IO) {
+        connection().use { connection ->
+            connection.prepareStatement(sql).use { statement ->
+                parameters.forEachIndexed { index, value -> statement.setObject(index + 1, value) }
+                statement.executeUpdate()
+            }
+        }
+    }
+
+    override fun executeAsync(sql: String, vararg parameters: Any?): CompletableFuture<Int> {
+        val kopie = parameters.copyOf()
+        return supplyAsync { execute(sql, *kopie) }
+    }
+
     override fun <T : Any> saveAsync(entity: T): CompletableFuture<Void> = runAsync { save(entity) }
 
     override fun <T : Any> updateAsync(entity: T): CompletableFuture<Void> = runAsync { update(entity) }
