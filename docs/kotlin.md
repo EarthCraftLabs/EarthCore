@@ -17,6 +17,7 @@ Serverseitige Einrichtung steht im [Haupt-README](../README.md).
 - [Commands](#commands)
 - [Cooldowns](#cooldowns)
 - [Konfiguration](#konfiguration)
+- [Versionierung](#versionierung)
 - [Annotationen](#annotationen)
 - [API-Referenz](#api-referenz)
 - [Fallstricke](#fallstricke)
@@ -53,7 +54,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("de.mecrytv:earthcore:1.8.0")
+    compileOnly("de.mecrytv:earthcore:1.9.0")
 }
 
 kotlin {
@@ -591,6 +592,88 @@ anderen ClassLoader, gibst du ihn als zweites Argument mit.
 
 Fehlende Schlüssel werden beim Start aus den Defaults ergänzt, vorhandene Werte
 bleiben unangetastet. Eine kaputte Datei wird weggesichert statt überschrieben.
+
+---
+
+## Versionierung
+
+### Gegen eine Mindestversion pruefen
+
+```kotlin
+import de.mecrytv.earthcore.version.api.CoreVersion
+
+override fun onEnable() {
+    val core = server.servicesManager.load(CoreVersion::class.java)
+        ?: error("EarthCore ist nicht geladen")
+    core.requireAtLeast("1.9.0")
+    ...
+}
+```
+
+`requireAtLeast` wirft mit einer lesbaren Meldung, wenn der laufende Core zu alt
+ist — deutlich hilfreicher als ein `NoSuchMethodError` mitten im Spielbetrieb.
+`isAtLeast(...)` gibt stattdessen ein `Boolean` zurueck, wenn du eine Funktion
+optional nutzen willst.
+
+Der Vergleich ist semver-korrekt: `1.10.0` ist neuer als `1.9.0`, und eine
+Vorabversion wie `1.9.0-SNAPSHOT` gilt als aelter als `1.9.0`.
+
+### Neue Felder an bestehenden Models
+
+`registerModel` gleicht die Tabelle gegen dein Model ab und ergaenzt fehlende
+Spalten selbst:
+
+```
+[EarthCore] Spalte `notiz` zu `shop_profiles` ergaenzt.
+[EarthCore] Spalte `coins` zu `shop_profiles` ergaenzt. Bestehende Zeilen bekommen 0.
+```
+
+Nicht-nullbare Spalten bekommen dabei einen Default, damit bestehende Zeilen
+gueltig bleiben: `0` fuer Zahlen und Wahrheitswerte, `''` fuer Texte, die erste
+Konstante fuer Enums, `[]` oder `{}` fuer JSON-Spalten. Willst du andere Werte,
+setz sie nach dem Start per `UPDATE`.
+
+Umbenannte oder geloeschte Felder und Typaenderungen macht EarthCore **nicht**.
+Ueberzaehlige Spalten werden nur gemeldet:
+
+```
+[EarthCore] `shop_profiles` hat Spalten ohne Feld im Model: [alteSpalte].
+```
+
+### Konfigurationsdateien migrieren
+
+Neue Schluessel brauchen nichts — die werden beim Start aus den Defaults
+ergaenzt. Erst wenn du Schluessel **umbenennst oder entfernst**, brauchst du
+Versionierung:
+
+```kotlin
+import de.mecrytv.earthcore.config.ConfigMigration
+import de.mecrytv.earthcore.config.ConfigVersioning
+
+configService = JsonConfigService(
+    file = File(dataFolder, "config.json"),
+    defaults = ConfigDefaults.model(ShopConfig()),
+    versioning = ConfigVersioning(
+        current = 2,
+        steps = mapOf(
+            2 to ConfigMigration { root ->
+                val server = root.getAsJsonObject("server")
+                server.add("name", server.remove("title"))
+            },
+        ),
+    ),
+    logger = logger,
+)
+```
+
+Der Schluessel `configVersion` landet in der Datei, sobald `current` groesser 1
+ist oder Schritte hinterlegt sind — vorher bleibt die Datei unberuehrt. Beim
+Start laufen genau die Schritte, die zwischen dem Stand auf der Platte und
+`current` liegen, in aufsteigender Reihenfolge. Eine Datei ohne Versionsschluessel
+gilt als Version 1.
+
+Scheitert ein Schritt, bricht der Start ab und die Datei auf der Platte bleibt
+unveraendert — lieber ein lauter Fehler als eine halb migrierte Konfiguration.
 
 ---
 

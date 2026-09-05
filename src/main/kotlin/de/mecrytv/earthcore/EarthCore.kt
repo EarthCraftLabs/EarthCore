@@ -14,6 +14,8 @@ import de.mecrytv.earthcore.database.api.DatabaseService
 import de.mecrytv.earthcore.database.internal.HikariDatabaseProvider
 import de.mecrytv.earthcore.registry.api.AutoRegistrar
 import de.mecrytv.earthcore.registry.internal.ReflectionAutoRegistrar
+import de.mecrytv.earthcore.version.api.CoreVersion
+import de.mecrytv.earthcore.version.internal.PluginCoreVersion
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -49,6 +51,7 @@ class EarthCore : JavaPlugin() {
 
     override fun onEnable() {
         scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val coreVersion = PluginCoreVersion(pluginMeta.version)
 
         configService = JsonConfigService(
             file = File(dataFolder, "config.json"),
@@ -63,7 +66,7 @@ class EarthCore : JavaPlugin() {
         )
 
         val credentials = configService.getOrDefault("database", DatabaseCredentials())
-        databases = HikariDatabaseProvider(credentials, JsonConfigService.defaultGson(pretty = false))
+        databases = HikariDatabaseProvider(credentials, JsonConfigService.defaultGson(pretty = false), logger)
 
         try {
             database = databases.of(credentials.database)
@@ -82,10 +85,11 @@ class EarthCore : JavaPlugin() {
         server.servicesManager.register(AutoRegistrar::class.java, autoRegistrar, this, ServicePriority.Normal)
         server.servicesManager.register(ConfigService::class.java, configService, this, ServicePriority.Normal)
         server.servicesManager.register(CooldownRegistry::class.java, cooldowns, this, ServicePriority.Normal)
+        server.servicesManager.register(CoreVersion::class.java, coreVersion, this, ServicePriority.Normal)
 
         server.scheduler.runTaskTimerAsynchronously(this, Runnable { cooldowns.prune() }, PRUNE_TICKS, PRUNE_TICKS)
 
-        logger.info("EarthCore aktiv - verbunden mit ${credentials.jdbcUrl}")
+        logger.info("EarthCore ${coreVersion.version} aktiv - verbunden mit ${credentials.jdbcUrl}")
     }
 
     override fun onDisable() {

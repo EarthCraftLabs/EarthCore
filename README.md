@@ -23,6 +23,7 @@ Commands.
 | `DatabaseService` | CRUD auf annotierten Models — HikariCP als Pool, Gson für komplexe Felder. Nie auf dem Tick-Thread. |
 | `AutoRegistrar` | Durchsucht die Packages deines Plugins und registriert alles mit passender Annotation. |
 | `CooldownRegistry` | Cooldowns pro Spieler, in der Datenbank abgelegt und damit neustartfest. Abfragen bleiben synchron. |
+| `CoreVersion` | Sagt, welche EarthCore-Version laeuft, und prueft semver-korrekt gegen eine Mindestanforderung. |
 
 Alle liegen in Bukkits `ServicesManager`. Dein Plugin braucht die
 `EarthCore`-Klasse nie zu kennen — ein `load(DatabaseProvider.class)` reicht.
@@ -122,7 +123,7 @@ wo der Server ohnehin noch keine Spieler annimmt.
 Ergebnis: **`build/libs/EarthCore.jar`** (~8 MB) — das Shadow-Jar mit Kotlin,
 Coroutines, HikariCP und dem MariaDB-Treiber.
 
-> Daneben liegt `EarthCore-1.8.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
+> Daneben liegt `EarthCore-1.9.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
 > ist das Jar **ohne** Abhängigkeiten und gehört nicht auf den Server.
 
 ---
@@ -181,7 +182,7 @@ Plugins laufen dann gar nicht erst an, statt reihenweise Folgefehler zu werfen.
 ./gradlew publishToMavenLocal
 ```
 
-Legt `de.mecrytv:earthcore:1.8.0` in `~/.m2/repository` ab. Veröffentlicht wird
+Legt `de.mecrytv:earthcore:1.9.0` in `~/.m2/repository` ab. Veröffentlicht wird
 das **Shadow-Jar** — das andere Projekt bekommt mit einer einzigen Abhängigkeit
 auch Kotlin, Coroutines und HikariCP auf den Compile-Classpath.
 
@@ -207,9 +208,12 @@ de.mecrytv.earthcore
 │   ├── annotations/          @AutoListener @AutoCommand @Cooldown
 │   ├── api/                  AutoRegistrar, RegistrationSummary, RegisteredEntry
 │   └── internal/             Classpath-Scan, Instanziierung, Permission- und Cooldown-Wrapper
-└── cooldown/
-    ├── api/                  CooldownRegistry
-    └── internal/             Speicher-Cache mit Datenbank dahinter, Zeitformatierung
+├── cooldown/
+│   ├── api/                  CooldownRegistry
+│   └── internal/             Speicher-Cache mit Datenbank dahinter, Zeitformatierung
+└── version/
+    ├── api/                  CoreVersion
+    └── internal/             Semver-Vergleich
 ```
 
 Interfaces liegen in `api/`, Implementierungen in `internal/`. Nur `api/` und
@@ -219,9 +223,10 @@ Interfaces liegen in `api/`, Implementierungen in `internal/`. Nur `api/` und
 
 ## Grenzen
 
-**Keine Migrationen.** `registerModel` macht `CREATE TABLE IF NOT EXISTS`, kein
-`ALTER`. Ein neues Feld an einem Model, dessen Tabelle schon existiert, braucht
-ein manuelles `ALTER TABLE`.
+**Migrationen nur additiv.** Fehlende Spalten werden beim `registerModel` per
+`ALTER TABLE` ergaenzt. Umbenannte oder geloeschte Felder und Typaenderungen
+bleiben deine Aufgabe — EarthCore meldet ueberzaehlige Spalten nur im Log und
+loescht nie.
 
 **`findAll` lädt ohne Limit.** Für Stamm- und Konfigurationsdaten gedacht, nicht
 für Log-Tabellen.
@@ -238,4 +243,18 @@ neu starten statt PlugMan zu benutzen.
 
 `build.gradle.kts` ist die einzige Stelle, an der die Version steht — die
 `plugin.yml` zieht sie sich beim Bauen von dort. Neue Funktionen erhöhen die
-Minor-, Fehlerbehebungen die Patch-Version.
+Minor-, Fehlerbehebungen die Patch-Version. Die Historie steht in
+[CHANGELOG.md](CHANGELOG.md), jede Version hat einen Git-Tag `vX.Y.Z`.
+
+An drei weiteren Stellen wird versioniert:
+
+**Datenbank.** `registerModel` gleicht die Tabelle gegen das Model ab und
+ergänzt fehlende Spalten per `ALTER TABLE` — additiv, nie löschend.
+
+**Konfiguration.** `ConfigVersioning` mit `ConfigMigration`-Schritten, sobald du
+Schlüssel umbenennst oder entfernst. Ohne Angabe passiert nichts und es landet
+auch kein Versionsschlüssel in der Datei.
+
+**API.** Abhängige Plugins prüfen mit
+`load(CoreVersion::class.java).requireAtLeast("1.9.0")`, ob der laufende Core neu
+genug ist — statt später an einem `NoSuchMethodError` zu scheitern.

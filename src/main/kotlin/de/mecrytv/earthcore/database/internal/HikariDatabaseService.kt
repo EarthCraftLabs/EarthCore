@@ -14,10 +14,13 @@ import kotlinx.coroutines.withContext
 import java.sql.Connection
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.logging.Level
+import java.util.logging.Logger
 
 class HikariDatabaseService(
     private val credentials: DatabaseCredentials,
     private val gson: Gson,
+    private val logger: Logger = Logger.getLogger(HikariDatabaseService::class.java.name),
 ) : DatabaseService {
 
     private val schemas = ConcurrentHashMap<Class<*>, ModelSchema<*>>()
@@ -54,9 +57,41 @@ class HikariDatabaseService(
         val schema = ModelSchema.of(modelClass)
         connection().use { connection ->
             connection.createStatement().use { it.executeUpdate(schema.createTable) }
+            migrate(connection, schema)
         }
         schemas[modelClass] = schema
     }
+
+    private fun migrate(connection: Connection, schema: ModelSchema<*>) {
+        val vorhanden = existingColumns(connection, schema.table)
+
+        for (column in schema.columns.filterNot { it.name in vorhanden }) {
+            connection.createStatement().use { it.executeUpdate(schema.addColumn(column)) }
+            val hinweis = if (column.definition.endsWith("NOT NULL")) {
+                " Bestehende Zeilen bekommen ${column.defaultLiteral}."
+            } else {
+                ""
+            }
+            logger.log(Level.INFO, "Spalte `${column.name}` zu `${schema.table}` ergaenzt.$hinweis")
+        }
+
+        val ueberzaehlig = vorhanden - schema.columns.map { it.name }.toSet()
+        if (ueberzaehlig.isNotEmpty()) {
+            logger.log(
+                Level.WARNING,
+                "`${schema.table}` hat Spalten ohne Feld im Model: $ueberzaehlig. " +
+                    "EarthCore loescht nichts - bei Bedarf selbst per DROP COLUMN entfernen.",
+            )
+        }
+    }
+
+    private fun existingColumns(connection: Connection, table: String): Set<String> =
+        connection.prepareStatement(COLUMNS).use { statement ->
+            statement.setString(1, table)
+            statement.executeQuery().use { row ->
+                buildSet { while (row.next()) add(row.getString(1)) }
+            }
+        }
 
     override suspend fun <T : Any> save(entity: T): Unit = withContext(Dispatchers.IO) {
         val schema = schemaOf(entity.javaClass)
@@ -161,5 +196,9 @@ class HikariDatabaseService(
     private companion object {
 
         const val MARIADB_DRIVER = "org.mariadb.jdbc.Driver"
+
+        const val COLUMNS =
+            "SELECT COLUMN_NAME FROM information_schema.COLUMNS " +
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?"
     }
 }

@@ -47,6 +47,8 @@ internal class ModelSchema<T : Any> private constructor(
 
     val selectAll: String = "SELECT $columnList FROM `$table`"
 
+    fun addColumn(column: ColumnMeta): String = "ALTER TABLE `$table` ADD COLUMN ${column.addition}"
+
     fun bindAll(statement: PreparedStatement, entity: Any, gson: Gson) =
         columns.forEachIndexed { index, column -> column.bind(statement, index + 1, entity, gson) }
 
@@ -91,7 +93,7 @@ internal class ModelSchema<T : Any> private constructor(
             columns: List<ColumnMeta>,
         ): ((ColumnMeta) -> Any?) -> T {
             val parameters = primary.parameters.associateBy { it.name }
-            return { read -> primary.callBy(columns.associate { parameters.getValue(it.field.name) to read(it) }) }
+            return { read -> primary.callBy(columns.associate { parameters.getValue(it.javaField.name) to read(it) }) }
         }
 
         private fun <T : Any> fieldBinding(

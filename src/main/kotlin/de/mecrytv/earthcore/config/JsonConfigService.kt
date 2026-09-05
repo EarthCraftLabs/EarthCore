@@ -16,10 +16,19 @@ import java.util.logging.Logger
 class JsonConfigService(
     override val file: File,
     private val defaults: ConfigDefaults,
+    private val versioning: ConfigVersioning = ConfigVersioning.NONE,
     private val gson: Gson = defaultGson(),
     private val placeholderResolver: PlaceholderResolver = PatternPlaceholderResolver(),
     private val logger: Logger = Logger.getLogger(JsonConfigService::class.java.name),
 ) : ConfigService {
+
+    constructor(
+        file: File,
+        defaults: ConfigDefaults,
+        gson: Gson,
+        placeholderResolver: PlaceholderResolver,
+        logger: Logger,
+    ) : this(file, defaults, ConfigVersioning.NONE, gson, placeholderResolver, logger)
 
     private var root: JsonObject = JsonObject()
 
@@ -31,8 +40,28 @@ class JsonConfigService(
     override fun reload() {
         val defaultTree = defaults.load(gson)
         val onDisk = read()
-        root = if (onDisk == null) defaultTree else merge(defaultTree, onDisk)
+        root = if (onDisk == null) defaultTree else merge(defaultTree, upgrade(onDisk))
+        if (versioning.enabled) root.addProperty(versioning.key, versioning.current)
         if (root != onDisk) write()
+    }
+
+    private fun upgrade(onDisk: JsonObject): JsonObject {
+        val gefunden = onDisk.get(versioning.key)?.takeIf { it.isJsonPrimitive }?.asInt ?: 1
+        if (gefunden >= versioning.current) return onDisk
+
+        var aktuell = onDisk
+        for ((schritt, migration) in versioning.pending(gefunden)) {
+            val naechster = aktuell.deepCopy()
+            try {
+                migration.migrate(naechster)
+            } catch (ex: Exception) {
+                logger.log(Level.SEVERE, "Migration von " + file.name + " auf Version " + schritt + " fehlgeschlagen.", ex)
+                throw ex
+            }
+            aktuell = naechster
+            logger.info(file.name + " auf Version " + schritt + " gehoben.")
+        }
+        return aktuell
     }
 
     @Synchronized
@@ -41,6 +70,7 @@ class JsonConfigService(
     @Synchronized
     override fun resetToDefaults() {
         root = defaults.load(gson)
+        if (versioning.enabled) root.addProperty(versioning.key, versioning.current)
         write()
     }
 

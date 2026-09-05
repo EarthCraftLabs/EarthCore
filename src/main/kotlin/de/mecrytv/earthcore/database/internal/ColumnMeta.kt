@@ -17,7 +17,7 @@ internal enum class ColumnKind { STRING, UUID, ENUM, INT, LONG, SHORT, BOOLEAN, 
 
 internal class ColumnMeta private constructor(
     val name: String,
-    val field: Field,
+    val javaField: Field,
     val primaryKey: Boolean,
     private val kind: ColumnKind,
     private val javaType: Type,
@@ -26,6 +26,17 @@ internal class ColumnMeta private constructor(
 ) {
 
     val definition: String get() = "`$name` $sqlType" + if (nullable) "" else " NOT NULL"
+
+    val addition: String get() = definition + if (nullable) "" else " DEFAULT $defaultLiteral"
+
+    val defaultLiteral: String
+        get() = when (kind) {
+            ColumnKind.INT, ColumnKind.LONG, ColumnKind.SHORT,
+            ColumnKind.BOOLEAN, ColumnKind.DOUBLE, ColumnKind.FLOAT -> "0"
+            ColumnKind.ENUM -> "'" + ((javaField.type.enumConstants?.firstOrNull() as? Enum<*>)?.name ?: "") + "'"
+            ColumnKind.JSON -> if (Collection::class.java.isAssignableFrom(javaField.type)) "'[]'" else "'{}'"
+            else -> "''"
+        }
 
     private val sqlType: String
         get() = when (kind) {
@@ -41,7 +52,7 @@ internal class ColumnMeta private constructor(
         }
 
     fun bind(statement: PreparedStatement, index: Int, entity: Any, gson: Gson) =
-        bindValue(statement, index, field.get(entity), gson)
+        bindValue(statement, index, javaField.get(entity), gson)
 
     fun bindValue(statement: PreparedStatement, index: Int, value: Any?, gson: Gson) {
         if (value == null) {
@@ -56,7 +67,7 @@ internal class ColumnMeta private constructor(
         }
     }
 
-    fun set(entity: Any, value: Any?) = field.set(entity, value)
+    fun set(entity: Any, value: Any?) = javaField.set(entity, value)
 
     fun read(row: ResultSet, gson: Gson): Any? = when (kind) {
         ColumnKind.JSON -> row.getString(name)?.let { gson.fromJson(it, javaType) }
@@ -73,9 +84,9 @@ internal class ColumnMeta private constructor(
 
     private fun <V> ResultSet.orNull(value: V): V? = if (wasNull()) null else value
 
-    private fun toEnum(raw: String): Any = field.type.enumConstants
+    private fun toEnum(raw: String): Any = javaField.type.enumConstants
         ?.firstOrNull { (it as Enum<*>).name == raw }
-        ?: error("'$raw' ist keine gueltige Konstante von ${field.type.simpleName} (Spalte '$name')")
+        ?: error("'$raw' ist keine gueltige Konstante von ${javaField.type.simpleName} (Spalte '$name')")
 
     override fun toString(): String = "$name $sqlType"
 
@@ -93,7 +104,7 @@ internal class ColumnMeta private constructor(
                         ?: column?.name?.takeIf { it.isNotEmpty() }
                         ?: field.name,
                 ),
-                field = field,
+                javaField = field,
                 primaryKey = key != null,
                 kind = if (json != null) ColumnKind.JSON else kindOf(field.type),
                 javaType = field.genericType,

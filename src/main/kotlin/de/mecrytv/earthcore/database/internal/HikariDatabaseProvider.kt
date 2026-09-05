@@ -8,10 +8,12 @@ import org.mariadb.jdbc.Driver
 import java.sql.Connection
 import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
+import java.util.logging.Logger
 
 class HikariDatabaseProvider(
     private val credentials: DatabaseCredentials,
     private val gson: Gson,
+    private val logger: Logger = Logger.getLogger(HikariDatabaseProvider::class.java.name),
 ) : DatabaseProvider {
 
     private val services = ConcurrentHashMap<String, HikariDatabaseService>()
@@ -20,7 +22,7 @@ class HikariDatabaseProvider(
         val database = Identifiers.check(name)
         return services.computeIfAbsent(database) {
             createIfMissing(it)
-            HikariDatabaseService(credentials.copy(database = it), gson).apply { connect() }
+            HikariDatabaseService(credentials.copy(database = it), gson, logger).apply { connect() }
         }
     }
 
