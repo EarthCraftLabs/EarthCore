@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "de.mecrytv"
-version = "1.10.0"
+version = "1.11.0"
 
 repositories {
     mavenCentral()
@@ -22,6 +22,7 @@ dependencies {
 
     testImplementation(kotlin("test"))
     testImplementation("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v1.21:4.116.3")
 }
 
 kotlin {

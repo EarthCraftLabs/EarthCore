@@ -10,6 +10,29 @@ sie sich beim Bauen von dort.
 
 ---
 
+## [1.11.0]
+
+### Neu
+
+- **`ItemBuilder`** zum Erstellen von Items. Unveraenderlich: jeder Aufruf liefert
+  einen neuen Builder, Vorlagen lassen sich damit gefahrlos mehrfach ableiten.
+  Name und Lore als MiniMessage oder fertige `Component`, kursiv wird automatisch
+  abgeschaltet. Abgedeckt sind Grundlagen, PersistentDataContainer, Spielerkoepfe
+  sowie Ruestungsfarbe, Traenke, Buecher, Feuerwerk und Banner.
+- Intern ein Mix aus beiden Paper-APIs: **Data Components** fuer Glitzern ohne
+  Verzauberung, Standardname, Stapelgroesse, CustomModelData und Kopf-Profile -
+  alles Dinge, die mit `ItemMeta` gar nicht oder nur ueber Umwege gehen. Der Rest
+  laeuft ueber das stabile `ItemMeta`. Der Builder kapselt das, ein spaeterer
+  Wechsel bricht keine abhaengigen Plugins.
+- Passt ein Aufruf nicht zum Material, gibt es eine klare `IllegalStateException`
+  beim `build()` statt eines stillen Nichts. Kaputte Kopf-Texturen fallen schon
+  beim `skullTexture(...)` auf.
+
+### Intern
+
+- MockBukkit als Test-Abhaengigkeit, damit `build()` gegen einen echten
+  Server-Mock geprueft wird und nicht nur uebersetzt.
+
 ## [1.10.0]
 
 ### Neu
@@ -100,6 +123,7 @@ Entwicklung und existieren nicht als Commit.
   greifen auf Kotlin-Properties *und* Java-Feldern, zu jeder `suspend`-Methode
   gibt es eine `CompletableFuture`-Variante.
 
+[1.11.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.11.0
 [1.10.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.10.0
 [1.9.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.9.0
 [1.8.0]: https://github.com/EarthCraftLabs/EarthCore/releases/tag/v1.8.0

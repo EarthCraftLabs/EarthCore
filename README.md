@@ -25,6 +25,7 @@ Commands.
 | `CooldownRegistry` | Cooldowns pro Spieler, in der Datenbank abgelegt und damit neustartfest. Abfragen bleiben synchron. |
 | `CoreVersion` | Sagt, welche EarthCore-Version laeuft, und prueft semver-korrekt gegen eine Mindestanforderung. |
 | `LogbookProvider` | Zentrales Logbuch: Konsole, Datenbank und Discord-Webhooks in einem Aufruf. |
+| `ItemBuilder` | Unveraenderlicher Builder fuer ItemStacks, MiniMessage inklusive. |
 
 Alle liegen in Bukkits `ServicesManager`. Dein Plugin braucht die
 `EarthCore`-Klasse nie zu kennen — ein `load(DatabaseProvider.class)` reicht.
@@ -113,6 +114,26 @@ Kategorienliste - Fehler in den Technik-Kanal, Team-Aktionen in den Team-Kanal.
 Der Versand laeuft gebuendelt und asynchron mit Ratenbegrenzung; ein Fehlersturm
 bringt weder den Tick-Thread noch Discord ins Straucheln.
 
+### Items bauen
+
+```kotlin
+ItemBuilder.of(Material.DIAMOND_SWORD)
+    .name("<gold>Scharfes Schwert")
+    .lore("<gray>Geschmiedet in EarthCraft")
+    .enchant(Enchantment.SHARPNESS, 5)
+    .glint(true)
+    .tag(NamespacedKey(plugin, "artikel"), "schwert-01")
+    .build()
+```
+
+Unveraenderlich - jeder Aufruf liefert einen neuen Builder, Vorlagen lassen sich
+also gefahrlos mehrfach ableiten. Name und Lore als MiniMessage, kursiv wird
+automatisch abgeschaltet. Koepfe, Ruestungsfarben, Traenke, Buecher, Feuerwerk und
+Banner sind abgedeckt, eigene Daten liegen im PersistentDataContainer.
+
+Intern ein Mix: Data Components dort, wo sie mehr koennen (Glitzern ohne
+Verzauberung, Stapelgroesse, Kopf-Texturen), sonst das stabile `ItemMeta`.
+
 ### Threading
 
 Datenbankzugriffe laufen **nie** auf dem Tick-Thread. Kotlin bekommt
@@ -140,7 +161,7 @@ wo der Server ohnehin noch keine Spieler annimmt.
 Ergebnis: **`build/libs/EarthCore.jar`** (~8 MB) — das Shadow-Jar mit Kotlin,
 Coroutines, HikariCP und dem MariaDB-Treiber.
 
-> Daneben liegt `EarthCore-1.10.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
+> Daneben liegt `EarthCore-1.11.0.jar` (~78 KB) aus dem Standard-`jar`-Task. Das
 > ist das Jar **ohne** Abhängigkeiten und gehört nicht auf den Server.
 
 ---
@@ -199,7 +220,7 @@ Plugins laufen dann gar nicht erst an, statt reihenweise Folgefehler zu werfen.
 ./gradlew publishToMavenLocal
 ```
 
-Legt `de.mecrytv:earthcore:1.10.0` in `~/.m2/repository` ab. Veröffentlicht wird
+Legt `de.mecrytv:earthcore:1.11.0` in `~/.m2/repository` ab. Veröffentlicht wird
 das **Shadow-Jar** — das andere Projekt bekommt mit einer einzigen Abhängigkeit
 auch Kotlin, Coroutines und HikariCP auf den Compile-Classpath.
 
@@ -231,9 +252,12 @@ de.mecrytv.earthcore
 ├── version/
 │   ├── api/                  CoreVersion
 │   └── internal/             Semver-Vergleich
-└── logging/
-    ├── api/                  Logbook, LogbookProvider, LogEntry, LogLevel, LogSink
-    └── internal/             Konsolen-, Datenbank- und Discord-Senke, Webhook-Versand
+├── logging/
+│   ├── api/                  Logbook, LogbookProvider, LogEntry, LogLevel, LogSink
+│   └── internal/             Konsolen-, Datenbank- und Discord-Senke, Webhook-Versand
+└── item/
+    ├── api/                  ItemBuilder
+    └── internal/             MiniMessage-Aufbereitung, Texturpruefung
 ```
 
 Interfaces liegen in `api/`, Implementierungen in `internal/`. Nur `api/` und

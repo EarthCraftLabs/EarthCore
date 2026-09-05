@@ -16,6 +16,7 @@ Serverseitige Einrichtung steht im [Haupt-README](../README.md).
 - [Listener](#listener)
 - [Commands](#commands)
 - [Cooldowns](#cooldowns)
+- [Items bauen](#items-bauen)
 - [Logging](#logging)
 - [Konfiguration](#konfiguration)
 - [Versionierung](#versionierung)
@@ -55,7 +56,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("de.mecrytv:earthcore:1.10.0")
+    compileOnly("de.mecrytv:earthcore:1.11.0")
 }
 
 kotlin {
@@ -538,6 +539,112 @@ Eigene Texte legst du daneben und verweist per `messageKey` darauf:
 
 Fehlende Schlüssel werden beim Start aus dem Jar ergänzt, deine Änderungen bleiben
 stehen.
+
+---
+
+## Items bauen
+
+`ItemBuilder` ist unveraenderlich: jeder Aufruf liefert einen neuen Builder, erst
+`build()` erzeugt den `ItemStack`.
+
+```kotlin
+import de.mecrytv.earthcore.item.api.ItemBuilder
+
+val schwert = ItemBuilder.of(Material.DIAMOND_SWORD)
+    .name("<gold>Scharfes Schwert")
+    .lore("<gray>Geschmiedet in EarthCraft", "<dark_gray>Einzelstueck")
+    .enchant(Enchantment.SHARPNESS, 5)
+    .flags(ItemFlag.HIDE_ENCHANTS)
+    .unbreakable(true)
+    .glint(true)
+    .tag(NamespacedKey(plugin, "artikel"), "schwert-01")
+    .build()
+```
+
+Name und Lore nimmst du als MiniMessage entgegen - die Texte kommen aus deinem
+eigenen Plugin, EarthCore parst sie nur. Wenn du bereits eine `Component` hast,
+gibst du sie direkt: `name(component)` bzw. `loreComponents(liste)`.
+
+**Kursiv wird automatisch abgeschaltet.** Minecraft schreibt Namen und Lore sonst
+schraeg. Setzt du `<i>` ausdruecklich, bleibt es erhalten.
+
+### Koepfe
+
+```kotlin
+ItemBuilder.of(Material.PLAYER_HEAD).skull(spieler).build()
+ItemBuilder.of(Material.PLAYER_HEAD).skullTexture(base64).build()
+```
+
+Die Base64-Textur wird sofort geprueft: kein gueltiges Base64, kein
+`textures.SKIN.url` oder eine URL ausserhalb von `textures.minecraft.net` fliegen
+mit klarer Meldung raus, statt spaeter einen unsichtbaren Kopf zu ergeben.
+
+### Spezialisierte Items
+
+```kotlin
+ItemBuilder.of(Material.LEATHER_CHESTPLATE).armorColor(Color.RED).build()
+ItemBuilder.of(Material.POTION).potion(PotionType.STRENGTH).build()
+ItemBuilder.of(Material.WRITTEN_BOOK).book("<gold>Regeln", "EarthCraft", listOf("Seite eins")).build()
+ItemBuilder.of(Material.FIREWORK_ROCKET).firework(2, effekt).build()
+ItemBuilder.of(Material.WHITE_BANNER).bannerPatterns(muster).build()
+```
+
+### Warum unveraenderlich
+
+Jeder Aufruf liefert einen **neuen** Builder. Damit kannst du Vorlagen anlegen und
+mehrfach ableiten, ohne dass sie sich gegenseitig veraendern:
+
+```kotlin
+val vorlage = ItemBuilder.of(Material.PAPER).name("<gold>Gutschein")
+
+val einzeln = vorlage.amount(1).build()
+val stapel = vorlage.amount(64).lore("<gray>Grosspackung").build()
+```
+
+Bei einem mutierenden Builder haette die zweite Ableitung die erste ueberschrieben
+- ein Fehler, der erst im Spiel auffaellt.
+
+`build()` liefert jedes Mal einen frischen `ItemStack`; zwei Aufrufe teilen sich
+nichts.
+
+### Alte und neue Paper-API
+
+Der Builder nutzt beides und versteckt den Unterschied. Ueber **Data Components**
+laufen die Dinge, die mit `ItemMeta` gar nicht oder nur ueber Umwege gehen:
+
+| Aufruf | Warum Data Component |
+|---|---|
+| `glint(true)` | Glitzern ohne Verzauberung - mit `ItemMeta` braeuchte es eine Schein-Verzauberung plus `HIDE_ENCHANTS` |
+| `itemName(...)` | Setzt den *Standardnamen*, nicht den Anzeigenamen. Das Item gilt im Amboss nicht als umbenannt. |
+| `maxStackSize(16)` | Mit `ItemMeta` gar nicht moeglich |
+| `customModelData(...)` | Die `ItemMeta`-Variante ist seit 1.21.4 veraltet |
+| `skullTexture(...)` | Setzt das Profil direkt, ohne die veralteten `SkullMeta`-Wege |
+
+Alles andere laeuft ueber `ItemMeta`, weil das stabil ist. Da der Builder das
+kapselt, koennen wir intern wechseln, ohne dass du eine Zeile anfassen musst.
+
+### Wenn der Aufruf nicht zum Material passt
+
+`armorColor(...)` auf einem Stein ist ein Fehler, kein stilles Nichts:
+
+```
+IllegalStateException: STONE hat keine LeatherArmorMeta - dieser Aufruf passt nicht zum Material
+```
+
+Der Fehler faellt beim `build()`, nicht erst wenn ein Spieler das Item in der Hand
+haelt. Eine kaputte Kopf-Textur meldet sich sogar noch frueher, direkt beim
+`skullTexture(...)`.
+
+### Ausweichwege
+
+Fuer alles, was der Builder nicht kennt:
+
+```kotlin
+ItemBuilder.of(Material.STONE)
+    .edit { stack -> stack.amount = 7 }
+    .meta(SkullMeta::class.java) { meta -> meta.setNoteBlockSound(key) }
+    .build()
+```
 
 ---
 
