@@ -57,7 +57,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("de.mecrytv:earthcore:1.14.0")
+    compileOnly("de.mecrytv:earthcore:3.0.0")
 }
 
 kotlin {
