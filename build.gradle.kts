@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "de.mecrytv"
-version = "1.14.0"
+version = "3.0.0"
 
 repositories {
     mavenCentral()

@@ -40,9 +40,10 @@ class JsonConfigService(
     override fun reload() {
         val defaultTree = defaults.load(gson)
         val onDisk = read()
-        root = if (onDisk == null) defaultTree else merge(defaultTree, upgrade(onDisk))
+        val migriert = onDisk?.let { upgrade(it) }
+        root = if (migriert == null) defaultTree else merge(defaultTree, migriert)
         if (versioning.enabled) root.addProperty(versioning.key, versioning.current)
-        if (root != onDisk) write()
+        if (onDisk == null || migriert !== onDisk) write()
     }
 
     private fun upgrade(onDisk: JsonObject): JsonObject {
