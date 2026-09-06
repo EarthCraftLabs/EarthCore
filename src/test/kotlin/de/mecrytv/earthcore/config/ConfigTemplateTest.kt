@@ -3,6 +3,7 @@ package de.mecrytv.earthcore.config
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import de.mecrytv.earthcore.logging.api.DiscordRoute
+import de.mecrytv.earthcore.logging.api.LogCategory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -96,5 +97,13 @@ class ConfigTemplateTest {
             gelesen.logging.discord.none { it.url.isNotBlank() },
             "Ein Beispiel-Webhook darf beim ersten Start nichts verschicken",
         )
+    }
+
+    @Test
+    fun `kategorien in der vorlage passen zum enum`() {
+        val gelesen = gson.fromJson(vorlage, PluginConfig::class.java)
+        val genannt = gelesen.logging.discord.flatMap { it.categories }
+
+        assertEquals(listOf(LogCategory.MODERATION), genannt)
     }
 }

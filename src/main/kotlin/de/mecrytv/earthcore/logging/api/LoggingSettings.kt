@@ -9,12 +9,12 @@ data class LoggingSettings(
 data class DiscordRoute(
     val url: String = "",
     val minLevel: LogLevel = LogLevel.WARN,
-    val categories: List<String> = emptyList(),
+    val categories: List<LogCategory> = emptyList(),
     val username: String = "EarthCraft",
 ) {
 
-    fun accepts(entry: de.mecrytv.earthcore.logging.api.LogEntry): Boolean =
+    fun accepts(entry: LogEntry): Boolean =
         url.isNotBlank() &&
             entry.level.atLeast(minLevel) &&
-            (categories.isEmpty() || categories.any { it.equals(entry.category, ignoreCase = true) })
+            (categories.isEmpty() || entry.category in categories)
 }

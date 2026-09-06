@@ -2,6 +2,7 @@ package de.mecrytv.earthcore.logging
 
 import com.google.gson.JsonParser
 import de.mecrytv.earthcore.logging.api.DiscordRoute
+import de.mecrytv.earthcore.logging.api.LogCategory
 import de.mecrytv.earthcore.logging.api.LogEntry
 import de.mecrytv.earthcore.logging.api.LogLevel
 import de.mecrytv.earthcore.logging.internal.DiscordSink
@@ -33,7 +34,7 @@ class DiscordSinkTest {
     private val team = DiscordRoute(
         url = "https://discord.com/api/webhooks/2/teamgeheim",
         minLevel = LogLevel.INFO,
-        categories = listOf("moderation"),
+        categories = listOf(LogCategory.MODERATION),
     )
 
     private val sender = NotierenderSender()
@@ -42,7 +43,7 @@ class DiscordSinkTest {
     private fun sink(vararg routes: DiscordRoute) =
         DiscordSink(routes.toList(), sender, Logger.getLogger("test"), clock = { jetzt })
 
-    private fun eintrag(level: LogLevel, category: String = "technik", message: String = "hallo") =
+    private fun eintrag(level: LogLevel, category: LogCategory = LogCategory.SYSTEM, message: String = "hallo") =
         LogEntry(level, category, message, plugin = "EarthShop")
 
     private fun embeds(body: String) =
@@ -62,7 +63,7 @@ class DiscordSinkTest {
     @Test
     fun `kategorien filtern pro webhook`() {
         val sink = sink(technik, team)
-        sink.accept(eintrag(LogLevel.ERROR, category = "moderation"))
+        sink.accept(eintrag(LogLevel.ERROR, category = LogCategory.MODERATION))
         sink.flush()
 
         assertEquals(2, sender.gesendet.size)
@@ -72,7 +73,7 @@ class DiscordSinkTest {
     @Test
     fun `ein webhook ohne kategorien nimmt alles ab dem level`() {
         val sink = sink(technik)
-        sink.accept(eintrag(LogLevel.ERROR, category = "irgendwas"))
+        sink.accept(eintrag(LogLevel.ERROR, category = LogCategory.SECURITY))
 
         assertEquals(1, sink.flush())
     }
@@ -80,7 +81,7 @@ class DiscordSinkTest {
     @Test
     fun `ein eintrag ausserhalb der kategorie erreicht den team-webhook nicht`() {
         val sink = sink(team)
-        sink.accept(eintrag(LogLevel.ERROR, category = "shop"))
+        sink.accept(eintrag(LogLevel.ERROR, category = LogCategory.ECONOMY))
 
         assertEquals(0, sink.flush())
     }
@@ -166,7 +167,7 @@ class DiscordSinkTest {
         sink.accept(
             LogEntry(
                 level = LogLevel.ERROR,
-                category = "shop",
+                category = LogCategory.ECONOMY,
                 message = "Kauf fehlgeschlagen",
                 plugin = "EarthShop",
                 actor = java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"),
@@ -177,7 +178,7 @@ class DiscordSinkTest {
         sink.flush()
 
         val embed = embeds(sender.gesendet.single().second).get(0).asJsonObject
-        assertEquals("ERROR - shop", embed.get("title").asString)
+        assertEquals("ERROR - ECONOMY", embed.get("title").asString)
         assertEquals("Kauf fehlgeschlagen", embed.get("description").asString)
         assertEquals(LogLevel.ERROR.color, embed.get("color").asInt)
         assertEquals("EarthShop", embed.getAsJsonObject("footer").get("text").asString)

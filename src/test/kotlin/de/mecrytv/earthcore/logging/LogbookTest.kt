@@ -1,5 +1,6 @@
 package de.mecrytv.earthcore.logging
 
+import de.mecrytv.earthcore.logging.api.LogCategory
 import de.mecrytv.earthcore.logging.api.LogEntry
 import de.mecrytv.earthcore.logging.api.LogLevel
 import de.mecrytv.earthcore.logging.api.LogSink
@@ -60,10 +61,10 @@ class LogbookTest {
 
     @Test
     fun `alle vier stufen erreichen die senke`() {
-        logbook.debug("shop", "leise")
-        logbook.info("shop", "normal")
-        logbook.warn("shop", "achtung")
-        logbook.error("shop", "kaputt", IllegalStateException("x"))
+        logbook.debug(LogCategory.ECONOMY, "leise")
+        logbook.info(LogCategory.ECONOMY, "normal")
+        logbook.warn(LogCategory.ECONOMY, "achtung")
+        logbook.error(LogCategory.ECONOMY, "kaputt", IllegalStateException("x"))
 
         assertContentEquals(
             listOf(LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR),
@@ -74,14 +75,14 @@ class LogbookTest {
 
     @Test
     fun `jeder eintrag traegt das plugin, das ihn geschrieben hat`() {
-        logbook.info("shop", "hallo")
+        logbook.info(LogCategory.ECONOMY, "hallo")
 
         assertEquals("EarthShop", senke.eintraege.single().plugin)
     }
 
     @Test
     fun `ein bereits gesetztes plugin bleibt stehen`() {
-        logbook.log(LogEntry(LogLevel.INFO, "shop", "durchgereicht", plugin = "EarthQuests"))
+        logbook.log(LogEntry(LogLevel.INFO, LogCategory.ECONOMY, "durchgereicht", plugin = "EarthQuests"))
 
         assertEquals("EarthQuests", senke.eintraege.single().plugin)
     }
@@ -89,7 +90,7 @@ class LogbookTest {
     @Test
     fun `record haelt akteur und details fest`() {
         val spieler = UUID.randomUUID()
-        logbook.record("moderation", spieler, "Bann ausgesprochen", "grund" to "Griefing", "dauer" to "7d")
+        logbook.record(LogCategory.MODERATION, spieler, "Bann ausgesprochen", "grund" to "Griefing", "dauer" to "7d")
 
         val eintrag = senke.eintraege.single()
         assertEquals(spieler, eintrag.actor)
@@ -102,7 +103,7 @@ class LogbookTest {
         val zweite = SammelndeSenke("zweite")
         val mitFehler = StandardLogbook("EarthShop", listOf(KaputteSenke(), zweite), fallback)
 
-        mitFehler.info("shop", "trotzdem")
+        mitFehler.info(LogCategory.ECONOMY, "trotzdem")
 
         assertEquals(1, zweite.eintraege.size)
     }
@@ -113,10 +114,10 @@ class LogbookTest {
     fun `die konsolenausgabe zeigt kategorie, nachricht, akteur und details`() {
         val spieler = UUID.fromString("00000000-0000-0000-0000-000000000009")
         val text = ConsoleSink.format(
-            LogEntry(LogLevel.INFO, "shop", "Kauf", "EarthShop", spieler, mapOf("preis" to 10)),
+            LogEntry(LogLevel.INFO, LogCategory.ECONOMY, "Kauf", "EarthShop", spieler, mapOf("preis" to 10)),
         )
 
-        assertEquals("[shop] Kauf von $spieler (preis=10)", text)
+        assertEquals("[ECONOMY] Kauf von $spieler (preis=10)", text)
     }
 
     @Test
@@ -131,11 +132,11 @@ class LogbookTest {
         var debug = false
         val console = ConsoleSink({ ziel }, { debug })
 
-        console.accept(LogEntry(LogLevel.DEBUG, "shop", "leise", "EarthShop"))
+        console.accept(LogEntry(LogLevel.DEBUG, LogCategory.ECONOMY, "leise", "EarthShop"))
         assertTrue(handler.saetze.isEmpty())
 
         debug = true
-        console.accept(LogEntry(LogLevel.DEBUG, "shop", "jetzt aber", "EarthShop"))
+        console.accept(LogEntry(LogLevel.DEBUG, LogCategory.ECONOMY, "jetzt aber", "EarthShop"))
         assertEquals(1, handler.saetze.size)
         assertEquals(Level.FINE, handler.saetze.single().level)
     }
@@ -160,7 +161,7 @@ class LogbookTest {
         val record = LogRecord.of(
             LogEntry(
                 level = LogLevel.WARN,
-                category = "shop",
+                category = LogCategory.ECONOMY,
                 message = "knapp",
                 plugin = "EarthShop",
                 actor = spieler,
@@ -179,6 +180,6 @@ class LogbookTest {
 
     @Test
     fun `ohne fehler bleibt die fehlerspalte leer`() {
-        assertNull(LogRecord.of(LogEntry(LogLevel.INFO, "shop", "alles gut")).error)
+        assertNull(LogRecord.of(LogEntry(LogLevel.INFO, LogCategory.ECONOMY, "alles gut")).error)
     }
 }

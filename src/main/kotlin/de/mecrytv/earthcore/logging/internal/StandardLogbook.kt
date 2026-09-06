@@ -1,5 +1,6 @@
 package de.mecrytv.earthcore.logging.internal
 
+import de.mecrytv.earthcore.logging.api.LogCategory
 import de.mecrytv.earthcore.logging.api.LogEntry
 import de.mecrytv.earthcore.logging.api.LogLevel
 import de.mecrytv.earthcore.logging.api.LogSink
@@ -14,16 +15,16 @@ class StandardLogbook(
     private val fallback: Logger,
 ) : Logbook {
 
-    override fun debug(category: String, message: String) = emit(LogLevel.DEBUG, category, message)
+    override fun debug(category: LogCategory, message: String) = emit(LogLevel.DEBUG, category, message)
 
-    override fun info(category: String, message: String) = emit(LogLevel.INFO, category, message)
+    override fun info(category: LogCategory, message: String) = emit(LogLevel.INFO, category, message)
 
-    override fun warn(category: String, message: String) = emit(LogLevel.WARN, category, message)
+    override fun warn(category: LogCategory, message: String) = emit(LogLevel.WARN, category, message)
 
-    override fun error(category: String, message: String, error: Throwable?) =
+    override fun error(category: LogCategory, message: String, error: Throwable?) =
         log(LogEntry(LogLevel.ERROR, category, message, plugin, error = error))
 
-    override fun record(category: String, actor: UUID?, message: String, details: Map<String, Any?>) =
+    override fun record(category: LogCategory, actor: UUID?, message: String, details: Map<String, Any?>) =
         log(LogEntry(LogLevel.INFO, category, message, plugin, actor, details))
 
     override fun log(entry: LogEntry) {
@@ -37,6 +38,6 @@ class StandardLogbook(
         }
     }
 
-    private fun emit(level: LogLevel, category: String, message: String) =
+    private fun emit(level: LogLevel, category: LogCategory, message: String) =
         log(LogEntry(level, category, message, plugin))
 }

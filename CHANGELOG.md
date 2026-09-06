@@ -10,6 +10,30 @@ sie sich beim Bauen von dort.
 
 ---
 
+## [3.0.0]
+
+### Geändert
+
+- **Eine vorhandene `config.json` wird nicht mehr ueberschrieben.** Beim Start
+  liest EarthCore die Datei nur noch; geschrieben wird ausschliesslich, wenn sie
+  fehlt oder eine Migration wirklich gelaufen ist. Fehlende Schluessel kommen
+  weiterhin aus der mitgelieferten Vorlage, aber nur im Speicher - deine
+  Ergaenzungen und deine Formatierung auf der Platte bleiben unangetastet. Damit
+  tauchen neue Optionen nicht mehr von selbst in bestehenden Dateien auf; sie
+  stehen im Changelog und wirken als Standardwert im Hintergrund.
+
+### Breaking
+
+- **Log-Kategorien sind ein Enum.** Statt beliebiger Zeichenketten nimmt das
+  Logbuch `LogCategory`: `SYSTEM`, `DATABASE`, `PLAYER`, `MODERATION`,
+  `ECONOMY`, `GUI`, `SECURITY`. Aus `logbook.info("shop", ...)` wird
+  `logbook.info(LogCategory.ECONOMY, ...)`. Das betrifft `Logbook`, `LogEntry`
+  und `DiscordRoute.categories`.
+- In der `config.json` stehen die Kategorien jetzt in **Grossbuchstaben**
+  (`"categories": ["MODERATION"]`), genau wie `minLevel` seit jeher. Ein
+  unbekannter Name wird beim Start gemeldet; der betroffene Webhook bekaeme
+  sonst stillschweigend nichts mehr.
+
 ## [1.14.0]
 
 ### Neu

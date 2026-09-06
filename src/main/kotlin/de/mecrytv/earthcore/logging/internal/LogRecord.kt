@@ -29,7 +29,7 @@ data class LogRecord(
             createdAt = entry.timestamp.toEpochMilli(),
             level = entry.level.name,
             plugin = entry.plugin,
-            category = entry.category,
+            category = entry.category.name,
             message = entry.message,
             actor = entry.actor,
             details = entry.details.mapValues { it.value?.toString() ?: "null" },

@@ -5,7 +5,7 @@ import java.util.UUID
 
 data class LogEntry(
     val level: LogLevel,
-    val category: String,
+    val category: LogCategory,
     val message: String,
     val plugin: String = "",
     val actor: UUID? = null,
@@ -20,7 +20,7 @@ data class LogEntry(
     companion object {
 
         @JvmStatic
-        fun of(level: LogLevel, category: String, message: String): LogEntry =
+        fun of(level: LogLevel, category: LogCategory, message: String): LogEntry =
             LogEntry(level, category, message)
     }
 }

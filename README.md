@@ -104,13 +104,14 @@ nicht als `[EarthCore]`. Fuer den Spieler wirkt es wie ein einziges Plugin.
 ```kotlin
 val logbook = server.servicesManager.load(LogbookProvider::class.java)!!.of(this)
 
-logbook.error("technik", "Backup fehlgeschlagen", exception)
-logbook.record("moderation", team.uniqueId, "Bann", mapOf("ziel" to name, "grund" to "Griefing"))
+logbook.error(LogCategory.SYSTEM, "Backup fehlgeschlagen", exception)
+logbook.record(LogCategory.MODERATION, team.uniqueId, "Bann", mapOf("ziel" to name, "grund" to "Griefing"))
 ```
 
 Ein Aufruf, drei Ziele: Konsole, Tabelle `log_entries` und Discord. Welche
 Eintraege nach Discord gehen, entscheiden pro Webhook ein Mindest-Level und eine
-Kategorienliste - Fehler in den Technik-Kanal, Team-Aktionen in den Team-Kanal.
+Kategorienliste aus dem Enum `LogCategory` - Fehler in den Technik-Kanal,
+Team-Aktionen in den Team-Kanal.
 
 Der Versand laeuft gebuendelt und asynchron mit Ratenbegrenzung; ein Fehlersturm
 bringt weder den Tick-Thread noch Discord ins Straucheln.

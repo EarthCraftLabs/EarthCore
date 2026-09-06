@@ -940,21 +940,26 @@ die Konsole, in die Datenbank und - wenn er zum Filter passt - an einen
 Discord-Webhook.
 
 ```java
+import de.mecrytv.earthcore.logging.api.LogCategory;
 import de.mecrytv.earthcore.logging.api.Logbook;
 import de.mecrytv.earthcore.logging.api.LogbookProvider;
 
 LogbookProvider provider = getServer().getServicesManager().load(LogbookProvider.class);
 Logbook logbook = provider.of(this);
 
-logbook.info("shop", "Laden geoeffnet");
-logbook.warn("shop", "Lager fast leer");
-logbook.error("shop", "Kauf fehlgeschlagen", exception);
-logbook.debug("shop", "Nur sichtbar, wenn debug an ist");
+logbook.info(LogCategory.ECONOMY, "Laden geoeffnet");
+logbook.warn(LogCategory.ECONOMY, "Lager fast leer");
+logbook.error(LogCategory.ECONOMY, "Kauf fehlgeschlagen", exception);
+logbook.debug(LogCategory.ECONOMY, "Nur sichtbar, wenn debug an ist");
 ```
 
 Der erste Parameter ist die **Kategorie**. Danach wird nach Discord geroutet und
-in der Datenbank gefiltert - waehl sie so, wie du spaeter suchen willst
-(`shop`, `moderation`, `technik`).
+in der Datenbank gefiltert. Die Kategorien liegen als Enum `LogCategory` fest,
+eigene gibt es nicht:
+
+`SYSTEM`, `DATABASE`, `PLAYER`, `MODERATION`, `ECONOMY`, `GUI`, `SECURITY`
+
+Fehlt dir eine, kommt sie ins Enum - dann kennt die Konfiguration sie sofort mit.
 
 ### Nachvollziehbare Aktionen
 
@@ -962,7 +967,7 @@ Fuer *wer hat was getan* gibt es `record`, mit Akteur und beliebigen Details:
 
 ```java
 logbook.record(
-        "moderation",
+        LogCategory.MODERATION,
         team.getUniqueId(),
         "Bann ausgesprochen",
         Map.of("ziel", opfer.getName(), "grund", "Griefing", "dauer", "7d"));
@@ -976,7 +981,7 @@ Bei `error` ist die Ausnahme das dritte Argument - ohne eine gibst du `null` mit
 ```java
 logbook.log(new LogEntry(
         LogLevel.WARN,
-        "technik",
+        LogCategory.SYSTEM,
         "Backup uebersprungen",
         "",
         null,
@@ -997,15 +1002,16 @@ nicht. Fuer den Normalfall reichen die Methoden oben. Ein leerer String bei
   "retentionDays": 30,
   "discord": [
     { "url": "https://discord.com/api/webhooks/...", "minLevel": "WARN", "categories": [], "username": "EarthCraft" },
-    { "url": "https://discord.com/api/webhooks/...", "minLevel": "INFO", "categories": ["moderation"], "username": "EarthCraft" }
+    { "url": "https://discord.com/api/webhooks/...", "minLevel": "INFO", "categories": ["MODERATION"], "username": "EarthCraft" }
   ]
 }
 ```
 
 Pro Eintrag ein Webhook. `minLevel` ist die Untergrenze (`DEBUG`, `INFO`, `WARN`,
-`ERROR`), `categories` schraenkt zusaetzlich ein - leer heisst alle. So gehen
-Fehler in den Technik-Kanal und Team-Aktionen in den Team-Kanal, ohne sich zu
-vermischen.
+`ERROR`), `categories` schraenkt zusaetzlich ein - leer heisst alle. Dort stehen
+die Namen aus `LogCategory` in Grossbuchstaben; ein unbekannter Name wird beim
+Start gemeldet, der Webhook bekommt dann nichts. So gehen Fehler in den
+Technik-Kanal und Team-Aktionen in den Team-Kanal, ohne sich zu vermischen.
 
 `retentionDays` raeumt die Tabelle `log_entries` auf; `0` schaltet das Aufraeumen
 ab. `debug` entscheidet, ob `debug(...)`-Eintraege ueberhaupt in der Konsole
