@@ -48,7 +48,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    compileOnly("de.mecrytv:earthcore:1.14.0")
+    compileOnly("de.mecrytv:earthcore:3.0.0")
 }
 
 java {
@@ -76,7 +76,7 @@ java {
   <dependency>
     <groupId>de.mecrytv</groupId>
     <artifactId>earthcore</artifactId>
-    <version>1.14.0</version>
+    <version>3.0.0</version>
     <scope>provided</scope>
   </dependency>
 </dependencies>
