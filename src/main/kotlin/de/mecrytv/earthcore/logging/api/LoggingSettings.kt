@@ -9,12 +9,8 @@ data class LoggingSettings(
 data class DiscordRoute(
     val url: String = "",
     val minLevel: LogLevel = LogLevel.WARN,
-    val categories: List<LogCategory> = emptyList(),
     val username: String = "EarthCraft",
 ) {
 
-    fun accepts(entry: LogEntry): Boolean =
-        url.isNotBlank() &&
-            entry.level.atLeast(minLevel) &&
-            (categories.isEmpty() || entry.category in categories)
+    fun accepts(entry: LogEntry): Boolean = url.isNotBlank() && entry.level.atLeast(minLevel)
 }

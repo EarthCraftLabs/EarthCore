@@ -827,13 +827,14 @@ logbook.error(LogCategory.ECONOMY, "Kauf fehlgeschlagen", exception)
 logbook.debug(LogCategory.ECONOMY, "Nur sichtbar, wenn debug an ist")
 ```
 
-Der erste Parameter ist die **Kategorie**. Danach wird nach Discord geroutet und
-in der Datenbank gefiltert. Die Kategorien liegen als Enum `LogCategory` fest,
-eigene gibt es nicht:
+Der erste Parameter ist die **Kategorie**. Sie steht in der Konsole, landet in
+der Spalte `category` der Tabelle `log_entries` und im Discord-Embed - danach
+suchst du spaeter. Die Kategorien liegen fest im Enum `LogCategory`, eigene aus
+der Konfiguration gibt es nicht:
 
 `SYSTEM`, `DATABASE`, `PLAYER`, `MODERATION`, `ECONOMY`, `GUI`, `SECURITY`
 
-Fehlt dir eine, kommt sie ins Enum - dann kennt die Konfiguration sie sofort mit.
+Fehlt dir eine, kommt sie als Konstante ins Enum.
 
 ### Nachvollziehbare Aktionen
 
@@ -874,17 +875,16 @@ logbook.log(
   "debug": false,
   "retentionDays": 30,
   "discord": [
-    { "url": "https://discord.com/api/webhooks/...", "minLevel": "WARN", "categories": [], "username": "EarthCraft" },
-    { "url": "https://discord.com/api/webhooks/...", "minLevel": "INFO", "categories": ["MODERATION"], "username": "EarthCraft" }
+    { "url": "https://discord.com/api/webhooks/...", "minLevel": "WARN", "username": "EarthCraft" },
+    { "url": "https://discord.com/api/webhooks/...", "minLevel": "INFO", "username": "EarthCraft" }
   ]
 }
 ```
 
 Pro Eintrag ein Webhook. `minLevel` ist die Untergrenze (`DEBUG`, `INFO`, `WARN`,
-`ERROR`), `categories` schraenkt zusaetzlich ein - leer heisst alle. Dort stehen
-die Namen aus `LogCategory` in Grossbuchstaben; ein unbekannter Name wird beim
-Start gemeldet, der Webhook bekommt dann nichts. So gehen Fehler in den
-Technik-Kanal und Team-Aktionen in den Team-Kanal, ohne sich zu vermischen.
+`ERROR`) und damit der einzige Schalter: Fehler in den Technik-Kanal, alles ab
+`INFO` in den Team-Kanal. Kategorien stehen nicht in der Konfiguration - sie
+gehoeren als `LogCategory` in den Code.
 
 `retentionDays` raeumt die Tabelle `log_entries` auf; `0` schaltet das Aufraeumen
 ab. `debug` entscheidet, ob `debug(...)`-Eintraege ueberhaupt in der Konsole

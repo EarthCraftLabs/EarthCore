@@ -4,7 +4,6 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import de.mecrytv.earthcore.logging.api.DiscordRoute
-import de.mecrytv.earthcore.logging.api.LogCategory
 import de.mecrytv.earthcore.logging.api.LogEntry
 import de.mecrytv.earthcore.logging.api.LogSink
 import java.time.Instant
@@ -34,15 +33,6 @@ class DiscordSink(
         routes.filter { it.url.isNotBlank() }.associateWith { ConcurrentLinkedQueue() }
 
     private val gesperrtBis = HashMap<DiscordRoute, Long>()
-
-    init {
-        queues.keys.filter { it.categories.size != it.categories.filterNotNull().size }.forEach {
-            logger.warning(
-                "Discord-Webhook " + mask(it.url) + " nennt unbekannte Kategorien. Erlaubt: " +
-                    LogCategory.entries.joinToString(),
-            )
-        }
-    }
 
     override fun accept(entry: LogEntry) {
         for ((route, queue) in queues) {

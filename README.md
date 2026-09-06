@@ -109,9 +109,8 @@ logbook.record(LogCategory.MODERATION, team.uniqueId, "Bann", mapOf("ziel" to na
 ```
 
 Ein Aufruf, drei Ziele: Konsole, Tabelle `log_entries` und Discord. Welche
-Eintraege nach Discord gehen, entscheiden pro Webhook ein Mindest-Level und eine
-Kategorienliste aus dem Enum `LogCategory` - Fehler in den Technik-Kanal,
-Team-Aktionen in den Team-Kanal.
+Eintraege nach Discord gehen, entscheidet pro Webhook das Mindest-Level - Fehler
+in den Technik-Kanal, alles ab `INFO` in den Team-Kanal.
 
 Der Versand laeuft gebuendelt und asynchron mit Ratenbegrenzung; ein Fehlersturm
 bringt weder den Tick-Thread noch Discord ins Straucheln.
@@ -216,9 +215,9 @@ sich sofort wieder herunter, weil noch keine Datenbank erreichbar ist.
     "debug": false,
     "retentionDays": 30,
     "discord": [
-      { "url": "https://discord.com/api/webhooks/...", "minLevel": "ERROR", "categories": [], "username": "EarthCraft Fehler" },
-      { "url": "https://discord.com/api/webhooks/...", "minLevel": "WARN", "categories": [], "username": "EarthCraft" },
-      { "url": "https://discord.com/api/webhooks/...", "minLevel": "INFO", "categories": ["moderation"], "username": "EarthCraft Team" }
+      { "url": "https://discord.com/api/webhooks/...", "minLevel": "ERROR", "username": "EarthCraft Fehler" },
+      { "url": "https://discord.com/api/webhooks/...", "minLevel": "WARN", "username": "EarthCraft" },
+      { "url": "https://discord.com/api/webhooks/...", "minLevel": "INFO", "username": "EarthCraft Team" }
     ]
   }
 }

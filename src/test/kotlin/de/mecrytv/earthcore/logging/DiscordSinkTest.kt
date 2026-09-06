@@ -31,11 +31,7 @@ private class NotierenderSender : WebhookSender {
 class DiscordSinkTest {
 
     private val technik = DiscordRoute("https://discord.com/api/webhooks/1/technikgeheim", LogLevel.WARN)
-    private val team = DiscordRoute(
-        url = "https://discord.com/api/webhooks/2/teamgeheim",
-        minLevel = LogLevel.INFO,
-        categories = listOf(LogCategory.MODERATION),
-    )
+    private val team = DiscordRoute("https://discord.com/api/webhooks/2/teamgeheim", LogLevel.INFO)
 
     private val sender = NotierenderSender()
     private var jetzt = 1_000_000L
@@ -61,29 +57,21 @@ class DiscordSinkTest {
     }
 
     @Test
-    fun `kategorien filtern pro webhook`() {
+    fun `ein eintrag geht an jeden webhook, dessen level passt`() {
         val sink = sink(technik, team)
-        sink.accept(eintrag(LogLevel.ERROR, category = LogCategory.MODERATION))
+        sink.accept(eintrag(LogLevel.ERROR))
         sink.flush()
 
-        assertEquals(2, sender.gesendet.size)
-        assertContentEquals(listOf(technik.url, team.url), sender.gesendet.map { it.first }.sorted().sorted())
+        assertContentEquals(listOf(technik.url, team.url), sender.gesendet.map { it.first }.sorted())
     }
 
     @Test
-    fun `ein webhook ohne kategorien nimmt alles ab dem level`() {
-        val sink = sink(technik)
-        sink.accept(eintrag(LogLevel.ERROR, category = LogCategory.SECURITY))
+    fun `nur der webhook mit dem niedrigeren level bekommt den eintrag`() {
+        val sink = sink(technik, team)
+        sink.accept(eintrag(LogLevel.INFO))
+        sink.flush()
 
-        assertEquals(1, sink.flush())
-    }
-
-    @Test
-    fun `ein eintrag ausserhalb der kategorie erreicht den team-webhook nicht`() {
-        val sink = sink(team)
-        sink.accept(eintrag(LogLevel.ERROR, category = LogCategory.ECONOMY))
-
-        assertEquals(0, sink.flush())
+        assertContentEquals(listOf(team.url), sender.gesendet.map { it.first })
     }
 
     @Test

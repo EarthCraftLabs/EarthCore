@@ -27,12 +27,13 @@ sie sich beim Bauen von dort.
 - **Log-Kategorien sind ein Enum.** Statt beliebiger Zeichenketten nimmt das
   Logbuch `LogCategory`: `SYSTEM`, `DATABASE`, `PLAYER`, `MODERATION`,
   `ECONOMY`, `GUI`, `SECURITY`. Aus `logbook.info("shop", ...)` wird
-  `logbook.info(LogCategory.ECONOMY, ...)`. Das betrifft `Logbook`, `LogEntry`
-  und `DiscordRoute.categories`.
-- In der `config.json` stehen die Kategorien jetzt in **Grossbuchstaben**
-  (`"categories": ["MODERATION"]`), genau wie `minLevel` seit jeher. Ein
-  unbekannter Name wird beim Start gemeldet; der betroffene Webhook bekaeme
-  sonst stillschweigend nichts mehr.
+  `logbook.info(LogCategory.ECONOMY, ...)`. Das betrifft `Logbook` und
+  `LogEntry`; in der Datenbank steht weiterhin der Name in der Spalte
+  `category`.
+- **`categories` faellt aus der `config.json` weg.** Kategorien werden nicht
+  mehr konfiguriert, sie stehen im Code. Ein Discord-Webhook hat damit nur noch
+  `minLevel` als Filter - das Feld in bestehenden Dateien wird schlicht
+  ignoriert. Auch `DiscordRoute.categories` ist weg.
 
 ## [1.14.0]
 
